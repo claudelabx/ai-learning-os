@@ -14,9 +14,11 @@
 // ---- تنظیمات از Environment Variables (هرگز در کد یا مرورگر هارد-کد نمی‌شن) ----
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const DEFAULT_PROVIDER = process.env.AI_DEFAULT_PROVIDER || 'claude'; // 'claude' | 'openai'
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const DEFAULT_PROVIDER = process.env.AI_DEFAULT_PROVIDER || 'gemini'; // 'gemini' | 'claude' | 'openai' — gemini پیش‌فرض چون رایگانه (بدون کارت بانکی)
 const GATEWAY_SECRET = process.env.GATEWAY_SECRET || ''; // محافظت ساده در برابر استفاده ناخواسته/عمومی
 
 // ---- Prompt Orchestrator ساده (طبق بند 132 سند چشم‌انداز) ----
@@ -53,6 +55,26 @@ function buildPrompt(context) {
   lines.push('با توجه به موارد بالا، گام بعدی پیشنهادی‌ات چیست؟');
 
   return { systemPrompt, userPrompt: lines.join('\n') };
+}
+
+// ---- فراخوانی Gemini (Google AI Studio — رایگان، بدون کارت بانکی) ----
+async function callGemini(systemPrompt, userPrompt) {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY تنظیم نشده است.');
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      }),
+    }
+  );
+  const data = await resp.json();
+  if (!resp.ok) throw new Error((data && data.error && data.error.message) || 'خطای Gemini API');
+  const text = ((data.candidates || [])[0]?.content?.parts || []).map((p) => p.text || '').join('\n').trim();
+  return text;
 }
 
 // ---- فراخوانی Claude (Anthropic Messages API) ----
@@ -102,15 +124,19 @@ async function callOpenAI(systemPrompt, userPrompt) {
   return text;
 }
 
-// ---- Fallback خودکار: اگر Provider اول شکست خورد، دومی رو امتحان کن (بند 128) ----
+// ---- Fallback خودکار: اگر Provider اول شکست خورد، بعدی رو امتحان کن (بند 128) ----
 async function callWithFallback(preferredProvider, systemPrompt, userPrompt) {
-  const order = preferredProvider === 'openai' ? ['openai', 'claude'] : ['claude', 'openai'];
+  const allOrders = {
+    gemini: ['gemini', 'claude', 'openai'],
+    claude: ['claude', 'gemini', 'openai'],
+    openai: ['openai', 'gemini', 'claude'],
+  };
+  const order = allOrders[preferredProvider] || allOrders.gemini;
+  const callers = { gemini: callGemini, claude: callClaude, openai: callOpenAI };
   let lastError = null;
   for (const provider of order) {
     try {
-      const text = provider === 'claude'
-        ? await callClaude(systemPrompt, userPrompt)
-        : await callOpenAI(systemPrompt, userPrompt);
+      const text = await callers[provider](systemPrompt, userPrompt);
       return { text, provider };
     } catch (e) {
       lastError = e;
