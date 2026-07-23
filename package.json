@@ -1,0 +1,6 @@
+{
+  "name": "ai-learning-os",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Learning OS / Project Zero — Static frontend + AI Gateway (Vercel Serverless Function)"
+}
