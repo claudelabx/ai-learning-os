@@ -133,16 +133,17 @@ async function callWithFallback(preferredProvider, systemPrompt, userPrompt) {
   };
   const order = allOrders[preferredProvider] || allOrders.gemini;
   const callers = { gemini: callGemini, claude: callClaude, openai: callOpenAI };
-  let lastError = null;
+  const errors = {};
   for (const provider of order) {
     try {
       const text = await callers[provider](systemPrompt, userPrompt);
       return { text, provider };
     } catch (e) {
-      lastError = e;
+      errors[provider] = e.message || 'خطای نامشخص';
     }
   }
-  throw lastError || new Error('هیچ Providerای در دسترس نبود.');
+  const combined = Object.entries(errors).map(([p, m]) => `${p}: ${m}`).join(' | ');
+  throw new Error(combined || 'هیچ Providerای در دسترس نبود.');
 }
 
 module.exports = async function handler(req, res) {
