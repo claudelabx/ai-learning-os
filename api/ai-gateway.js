@@ -57,6 +57,19 @@ function buildPrompt(context) {
   return { systemPrompt, userPrompt: lines.join('\n') };
 }
 
+// ---- Prompt Orchestrator برای دسته‌بندی Inbox (سند 008 · مود دوم Gateway) ----
+function buildClassifyPrompt(rawText) {
+  const systemPrompt =
+    'تو یک دستیار دسته‌بندی متن هستی داخل اپلیکیشن «AI Learning OS». ' +
+    'کاربر یک متن خام و بدون‌ساختار نوشته. باید تشخیص بدی این متن به کدوم دسته نزدیک‌تره: ' +
+    '«Project» (یک پروژه یا هدف بزرگ با چند مرحله)، «Task» (یک کار مشخص و کوچک و قابل انجام)، ' +
+    'یا «Note» (یک نکته، ایده یا اطلاعات صرفاً برای نگهداری، بدون نیاز فوری به اقدام). ' +
+    'فقط و فقط یک JSON خام و معتبر برگردون، دقیقاً با این شکل، بدون هیچ متن اضافه یا Markdown fence: ' +
+    '{"suggested_type": "Project یا Task یا Note", "reason": "یک جملهٔ کوتاه فارسی که دلیل انتخابت رو توضیح بده"}';
+  const userPrompt = `متن خام کاربر:\n${rawText}`;
+  return { systemPrompt, userPrompt };
+}
+
 // ---- فراخوانی Gemini (Google AI Studio — رایگان، بدون کارت بانکی) ----
 async function callGemini(systemPrompt, userPrompt) {
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY تنظیم نشده است.');
@@ -172,6 +185,31 @@ module.exports = async function handler(req, res) {
 
     if (mode === 'ping') {
       return res.status(200).json({ success: true, data: { pong: true, defaultProvider: DEFAULT_PROVIDER }, error: null });
+    }
+
+    if (mode === 'classify') {
+      const rawText = ((body.context && body.context.raw_text) || '').trim();
+      if (!rawText) {
+        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'raw_text خالی است.' } });
+      }
+      const { systemPrompt, userPrompt } = buildClassifyPrompt(rawText);
+      const { text, provider } = await callWithFallback(requestedProvider, systemPrompt, userPrompt);
+
+      let parsed;
+      try {
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        return res.status(502).json({ success: false, error: { code: 'PARSE_ERROR', message: 'پاسخ AI به‌صورت JSON معتبر نبود.' } });
+      }
+      if (!['Project', 'Task', 'Note'].includes(parsed.suggested_type)) {
+        return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'نوع پیشنهادی نامعتبر بود.' } });
+      }
+      return res.status(200).json({
+        success: true,
+        data: { suggested_type: parsed.suggested_type, reason: parsed.reason || '', provider },
+        error: null,
+      });
     }
 
     if (mode !== 'next-step') {
