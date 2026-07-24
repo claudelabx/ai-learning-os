@@ -564,6 +564,59 @@
   .kpi-strip-value{ font-family:var(--font-en); font-size:var(--text-body); font-weight:700; }
   .kpi-strip-title{ font-size:var(--text-caption); color:var(--color-text-secondary); }
 
+  /* ====================================================================
+     زیرفاز 1.5-و (سند 012) — داشبورد تعاملی
+     همه رنگ‌ها فقط از Tokenهای سیستم تم (سند 007 نسخه 3.1) خوانده می‌شوند.
+     ==================================================================== */
+  .plan-list{ display:flex; flex-direction:column; gap:var(--space-s); }
+  .plan-item{
+    display:flex; align-items:center; gap:var(--space-m);
+    padding:var(--space-s) var(--space-m);
+    border:1px solid var(--color-neutral-border);
+    border-radius:var(--radius-m, 12px);
+    background:var(--color-neutral-surface);
+  }
+  .plan-item.done .plan-item-title{ text-decoration:line-through; color:var(--color-text-secondary); }
+  .plan-item-main{ display:flex; flex-direction:column; gap:var(--space-xs); flex:1; min-width:0; }
+  .plan-item-title{ font-weight:600; color:var(--color-text-primary); overflow:hidden; text-overflow:ellipsis; }
+  .plan-item-meta{
+    display:flex; align-items:center; gap:var(--space-s); flex-wrap:wrap;
+    font-size:var(--text-caption); color:var(--color-text-secondary);
+  }
+  .plan-check{ width:18px; height:18px; accent-color:var(--color-primary); flex-shrink:0; cursor:pointer; }
+  .plan-status{ max-width:150px; font-size:var(--text-caption); }
+  .plan-pick{ cursor:pointer; text-align:start; width:100%; font:inherit; color:var(--color-primary); }
+  .plan-pick:hover{ border-color:var(--color-primary); background:var(--color-primary-soft); }
+  .plan-list.picker{ max-height:260px; overflow-y:auto; margin-top:var(--space-s); }
+
+  .week-bar{ display:grid; grid-template-columns:repeat(7, 1fr); gap:var(--space-s); }
+  .week-day{
+    display:flex; flex-direction:column; align-items:center; gap:var(--space-xs);
+    padding:var(--space-s); cursor:pointer; font:inherit;
+    border:1px solid var(--color-neutral-border);
+    border-radius:var(--radius-m, 12px);
+    background:var(--color-neutral-surface);
+    color:var(--color-text-primary);
+  }
+  .week-day:hover{ border-color:var(--color-primary); }
+  .week-day.today{ border-color:var(--color-primary); background:var(--color-primary-soft); }
+  .week-day.past{ color:var(--color-text-secondary); }
+  .week-day-name{ font-size:var(--text-caption); color:var(--color-text-secondary); }
+  .week-day-num{ font-weight:700; }
+  .week-day.today .week-day-num{ color:var(--color-primary); }
+  .week-day-counts{ display:flex; gap:var(--space-xs); min-height:18px; flex-wrap:wrap; justify-content:center; }
+  .week-count{
+    display:inline-flex; align-items:center; gap:2px;
+    font-size:var(--text-caption); color:var(--color-primary);
+  }
+  .week-count svg{ width:12px; height:12px; }
+  .week-count.deadline{ color:var(--color-warning); }
+  @media (max-width: 720px){
+    .week-bar{ gap:var(--space-xs); }
+    .week-day{ padding:var(--space-xs); }
+    .plan-item{ flex-wrap:wrap; }
+  }
+
   /* ---- زیرفاز 1.5-د (سند 012): جذابیت بصری ---- */
   /* دکمه‌های اقدام داخل Empty Stateهای راهنما */
   .empty-actions{ display:flex; gap:var(--space-s); flex-wrap:wrap; justify-content:center; margin-top:var(--space-m); }
@@ -1303,20 +1356,21 @@
         </div>
       </template>
 
-      <!-- حالت ۴ الگوریتم: دعوت به AI Interview — نقطه ورود دوم زیرفاز 1.5-ج (سند 012) -->
+      <!-- حالت ۴ الگوریتم (بازنگری زیرفاز 1.5-و — سند 012): هدایت ساده به Goals.
+           خانه واحد Interview فقط ماژول Goals است؛ داشبورد خالی دکمه مستقیم AI ندارد (سند 002 نسخه 3.3). -->
       <template x-if="!todaysMission">
         <div class="mission-body">
           <div class="mission-main">
             <h2>از کجا شروع کنم؟</h2>
             <p class="mission-context">
-              کار فعالی برای امروز پیدا نشد. یک جمله درباره هدفت بنویس تا AI پیش‌نویس هدف،
-              اولین پروژه و تسک‌های اولت را پیشنهاد بدهد — تصمیم نهایی و ویرایش همیشه با خودت است.
+              کار فعالی برای امروز پیدا نشد. همه‌چیز از یک هدف شروع می‌شود —
+              به ماژول اهداف برو و اولین هدفت را (دستی یا با کمک AI) بساز.
             </p>
           </div>
           <div class="mission-actions">
-            <button class="btn btn-primary" @click="openInterview()">
-              <span x-html="icon('sparkles')"></span>
-              <span>شروع با AI</span>
+            <button class="btn btn-primary" @click="goToGoalsFromDashboard()">
+              <span x-html="icon('target')"></span>
+              <span>برو به اهداف</span>
             </button>
             <button class="btn btn-secondary" x-show="continueTarget" @click="goToContinueTarget()">
               <span x-html="icon('refresh-cw')"></span>
@@ -1325,6 +1379,109 @@
           </div>
         </div>
       </template>
+    </div>
+
+    <!-- ==================================================================
+         زیرفاز 1.5-و (سند 012) — داشبورد تعاملی بر پایه planned_date (سند 005 نسخه 4.2)
+         اصل حاکم: هیچ عمل ساده‌ای کاربر را مجبور به ترک داشبورد نمی‌کند (سند 002).
+         ================================================================== -->
+
+    <!-- ۲) لیست «برنامه امروز» — همه تسک‌های planned_date = امروز از همه پروژه‌ها -->
+    <div class="card">
+      <div class="section-title-row" style="margin-bottom:var(--space-m);">
+        <h2>برنامه امروز</h2>
+        <div style="display:flex; align-items:center; gap:var(--space-s);">
+          <span class="badge badge-neutral en" x-show="todaysPlanTasks.length > 0" x-text="todaysPlanTasks.filter(t => t.status === 'Done').length + ' / ' + todaysPlanTasks.length"></span>
+          <button class="btn btn-secondary" @click="openDayPlan(todayDateString())">
+            <span x-html="icon('plus')"></span>
+            <span>افزودن تسک</span>
+          </button>
+        </div>
+      </div>
+
+      <template x-if="todaysPlanTasks.length === 0">
+        <div class="empty-state" style="padding-block:var(--space-l);">
+          <strong>هنوز برنامه‌ای برای امروز نچیدی</strong>
+          <p>از هر پروژه‌ای که می‌خواهی، تسک به برنامه امروز اضافه کن — بدون ترک داشبورد.</p>
+        </div>
+      </template>
+
+      <div class="plan-list" x-show="todaysPlanTasks.length > 0">
+        <template x-for="task in todaysPlanTasks" :key="'plan-' + task.id">
+          <div class="plan-item" :class="{ done: task.status === 'Done' }">
+            <!-- تیک تکمیل: Done ⇄ Todo — فقط status؛ بدون اثر بر planned_date/priority/due_date -->
+            <input type="checkbox" class="plan-check" :checked="task.status === 'Done'" @change="togglePlanTaskDone(task)" :aria-label="'تکمیل ' + task.title">
+            <div class="plan-item-main">
+              <span class="plan-item-title" x-text="task.title"></span>
+              <span class="plan-item-meta">
+                <span x-text="_projectTitle(task.project_id)"></span>
+                <span class="badge" :class="priorityMeta(task.priority).badge" x-text="priorityMeta(task.priority).label"></span>
+                <span class="en" x-show="task.due_date" x-text="task.due_date ? 'ددلاین: ' + formatDueDate(task.due_date) : ''"></span>
+              </span>
+            </div>
+            <!-- تغییر وضعیت مستقیم از داشبورد — از همان taskStatusOptions موجود -->
+            <select class="form-select plan-status" :value="task.status" @change="setPlanTaskStatus(task, $event.target.value)" :aria-label="'وضعیت ' + task.title">
+              <template x-for="opt in taskStatusOptions" :key="'ps-' + task.id + '-' + opt.value">
+                <option :value="opt.value" :selected="task.status === opt.value" x-text="opt.label"></option>
+              </template>
+            </select>
+            <!-- حذف از برنامه = فقط پاک‌کردن planned_date (سند 005: بدون اثر جانبی) -->
+            <button class="icon-btn" @click="removeFromPlan(task)" :aria-label="'حذف از برنامه: ' + task.title" title="حذف از برنامه امروز">
+              <span x-html="icon('calendar-x')"></span>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- ۳) نوار هفتگی — هفته تقویمی شمسی (شنبه تا جمعه)، jalaali-js موجود -->
+    <div class="card">
+      <div class="section-title-row" style="margin-bottom:var(--space-m);">
+        <h2>نوار هفتگی</h2>
+        <span class="form-helper" x-text="weekRangeLabel"></span>
+      </div>
+      <div class="week-bar">
+        <template x-for="day in weekDays" :key="'wd-' + day.date">
+          <button class="week-day" :class="{ today: day.isToday, past: day.isPast }" @click="openDayPlan(day.date)" :aria-label="day.weekday + ' ' + jalaliFullLabel(day.date)">
+            <span class="week-day-name" x-text="day.weekday"></span>
+            <span class="week-day-num en" x-text="day.jd"></span>
+            <span class="week-day-counts">
+              <span class="week-count" x-show="day.plannedCount > 0" title="تسک برنامه‌ریزی‌شده">
+                <span x-html="icon('list-checks')"></span><span class="en" x-text="day.plannedCount"></span>
+              </span>
+              <span class="week-count deadline" x-show="day.deadlineCount > 0" title="ددلاین">
+                <span x-html="icon('flag')"></span><span class="en" x-text="day.deadlineCount"></span>
+              </span>
+            </span>
+          </button>
+        </template>
+      </div>
+    </div>
+
+    <!-- ۴) عقب‌افتاده از برنامه — planned_date گذشته و ناتمام؛ وضعیت هرگز خودکار تغییر نمی‌کند (Human in Control) -->
+    <div class="card" x-show="behindPlanTasks.length > 0" x-cloak>
+      <div class="section-title-row" style="margin-bottom:var(--space-m);">
+        <h2>عقب‌افتاده از برنامه</h2>
+        <span class="badge badge-warning en" x-text="behindPlanTasks.length"></span>
+      </div>
+      <div class="plan-list">
+        <template x-for="task in behindPlanTasks" :key="'behind-' + task.id">
+          <div class="plan-item">
+            <div class="plan-item-main">
+              <span class="plan-item-title" x-text="task.title"></span>
+              <span class="plan-item-meta">
+                <span x-text="_projectTitle(task.project_id)"></span>
+                <span x-text="'برنامه: ' + jalaliFullLabel(String(task.planned_date).slice(0, 10))"></span>
+              </span>
+            </div>
+            <!-- اقدام یک‌کلیکی: فقط planned_date = امروز؛ status دست‌نخورده -->
+            <button class="btn btn-secondary" @click="moveToToday(task)">
+              <span x-html="icon('calendar')"></span>
+              <span>انتقال به امروز</span>
+            </button>
+          </div>
+        </template>
+      </div>
     </div>
 
     <!-- زیرفاز 1.5-الف (سند 012): میانبر ثبت سریع ژورنال — نیمه دوم ستاره قطبی -->
@@ -3206,6 +3363,98 @@
 </div>
 
 <!-- =====================================================================
+     DAY PLAN MODAL — زیرفاز 1.5-و (سند 012): دیدن/افزودن برنامه یک روز
+     تصمیم ثبت‌شده کاربر در این چت: هفته تقویمی شمسی؛ روزهای گذشته فقط قابل مشاهده.
+     ===================================================================== -->
+<div class="modal-overlay" x-show="planModalOpen" x-cloak x-transition @keydown.escape.window="planModalOpen = false">
+  <div class="modal" @click.outside="planModalOpen = false" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2 x-text="'برنامه ' + (planModalDate === todayDateString() ? 'امروز — ' : '') + (planModalDate ? jalaliWeekday(planModalDate) + ' ' + jalaliFullLabel(planModalDate) : '')"></h2>
+        <p x-show="!planModalIsPast">تسک از هر پروژه‌ای اضافه کن — planned_date فقط برنامه است، نه ددلاین (سند 005 نسخه 4.2).</p>
+        <p x-show="planModalIsPast">روز گذشته — فقط قابل مشاهده (تصمیم ثبت‌شده زیرفاز 1.5-و).</p>
+      </div>
+      <button class="icon-btn" @click="planModalOpen = false" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- تسک‌های برنامه‌ریزی‌شده این روز -->
+      <div class="form-group">
+        <label class="form-label">تسک‌های برنامه‌ریزی‌شده <span class="optional en" x-text="'(' + planModalTasks.length + ')'"></span></label>
+        <p class="form-helper" x-show="planModalTasks.length === 0">هنوز تسکی برای این روز برنامه‌ریزی نشده.</p>
+        <div class="plan-list" x-show="planModalTasks.length > 0">
+          <template x-for="task in planModalTasks" :key="'pm-' + task.id">
+            <div class="plan-item" :class="{ done: task.status === 'Done' }">
+              <template x-if="!planModalIsPast">
+                <input type="checkbox" class="plan-check" :checked="task.status === 'Done'" @change="togglePlanTaskDone(task)" :aria-label="'تکمیل ' + task.title">
+              </template>
+              <div class="plan-item-main">
+                <span class="plan-item-title" x-text="task.title"></span>
+                <span class="plan-item-meta">
+                  <span x-text="_projectTitle(task.project_id)"></span>
+                  <span class="badge badge-neutral" x-text="taskStatusMeta(task.status).label"></span>
+                </span>
+              </div>
+              <template x-if="!planModalIsPast">
+                <button class="icon-btn" @click="removeFromPlan(task)" :aria-label="'حذف از برنامه: ' + task.title" title="حذف از برنامه این روز">
+                  <span x-html="icon('calendar-x')"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ددلاین‌های این روز — فقط اطلاع‌رسانی (نوار هفتگی این‌ها را می‌شمارد) -->
+      <div class="form-group" x-show="planModalDeadlines.length > 0">
+        <label class="form-label">ددلاین‌های این روز <span class="optional en" x-text="'(' + planModalDeadlines.length + ')'"></span></label>
+        <div class="plan-list">
+          <template x-for="task in planModalDeadlines" :key="'pmd-' + task.id">
+            <div class="plan-item">
+              <div class="plan-item-main">
+                <span class="plan-item-title" x-text="task.title"></span>
+                <span class="plan-item-meta">
+                  <span x-text="_projectTitle(task.project_id)"></span>
+                  <span class="badge" :class="priorityMeta(task.priority).badge" x-text="priorityMeta(task.priority).label"></span>
+                </span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- انتخابگر تسک از همه پروژه‌ها — فقط برای امروز و روزهای آینده -->
+      <div class="form-group" x-show="!planModalIsPast">
+        <label class="form-label" for="plan-picker-filter">افزودن تسک به این روز</label>
+        <input id="plan-picker-filter" class="form-input" type="text" x-model="plannerFilter" placeholder="جستجو در عنوان تسک یا نام پروژه…">
+        <p class="form-helper" x-show="plannerCandidates.length === 0">تسک فعالِ قابل‌افزودنی پیدا نشد.</p>
+        <div class="plan-list picker" x-show="plannerCandidates.length > 0">
+          <template x-for="task in plannerCandidates" :key="'pc-' + task.id">
+            <button class="plan-item plan-pick" @click="addToPlan(task)">
+              <span x-html="icon('plus')"></span>
+              <div class="plan-item-main">
+                <span class="plan-item-title" x-text="task.title"></span>
+                <span class="plan-item-meta">
+                  <span x-text="_projectTitle(task.project_id)"></span>
+                  <span class="badge" :class="priorityMeta(task.priority).badge" x-text="priorityMeta(task.priority).label"></span>
+                  <span class="en" x-show="task.due_date" x-text="task.due_date ? 'ددلاین: ' + formatDueDate(task.due_date) : ''"></span>
+                </span>
+              </div>
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="planModalOpen = false">بستن</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
      TASK MODAL — Create / Edit (ماژول Projects → Tasks)
      منبع فیلدها: 005-Data-Architecture (جدول فیلدهای Task)
      ===================================================================== -->
@@ -3263,6 +3512,15 @@
         <div class="form-group">
           <label class="form-label" for="tf-due">موعد انجام <span class="optional">(اختیاری)</span></label>
           <input id="tf-due" class="form-input en" style="direction:ltr;" type="date" x-model="taskForm.due_date">
+        </div>
+      </div>
+
+      <!-- زیرفاز 1.5-و (سند 005 نسخه 4.2): planned_date — برچسب متمایز از «موعد انجام» (ددلاین) -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="tf-planned">برنامه‌ریزی‌شده برای <span class="optional">(اختیاری)</span></label>
+          <input id="tf-planned" class="form-input en" style="direction:ltr;" type="date" x-model="taskForm.planned_date">
+          <p class="form-helper">روزی که قصد داری انجامش بدهی — با «موعد انجام» (ددلاین) فرق دارد و هیچ اثری روی آن ندارد.</p>
         </div>
       </div>
 
@@ -5208,6 +5466,8 @@ const ICONS = {
   'check-circle-2': '<circle cx="12" cy="12" r="9"/><polyline points="8 12.5 11 15.5 16 9"/>',
   'archive': '<rect x="3" y="4" width="18" height="4.5" rx="1"/><path d="M4.5 8.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5V8.5"/><line x1="10" y1="12.5" x2="14" y2="12.5"/>',
   'calendar': '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><line x1="8" y1="3" x2="8" y2="6.5"/><line x1="16" y1="3" x2="16" y2="6.5"/>',
+  'calendar-x': '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><line x1="8" y1="3" x2="8" y2="6.5"/><line x1="16" y1="3" x2="16" y2="6.5"/><line x1="9.5" y1="12.5" x2="14.5" y2="17.5"/><line x1="14.5" y1="12.5" x2="9.5" y2="17.5"/>',
+  'flag': '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
   'timer': '<circle cx="12" cy="13" r="8"/><polyline points="12 9 12 13 15 15"/><line x1="9" y1="2" x2="15" y2="2"/>',
   'link-2': '<path d="M9 15l6-6"/><path d="M13 5.5l1-1a3.5 3.5 0 0 1 5 5l-1 1"/><path d="M11 18.5l-1 1a3.5 3.5 0 0 1-5-5l1-1"/>',
   'file': '<path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M14 3v5h5"/>',
@@ -5527,7 +5787,11 @@ function app() {
     taskModalOpen: false,
     taskModalMode: 'create',
     editingTaskId: null,
-    taskForm: { title: '', description: '', status: 'Todo', priority: 'Medium', difficulty: 'Easy', due_date: '', estimate_minutes: null, spent_minutes: null, checklist: [], dependencies: [] },
+    taskForm: { title: '', description: '', status: 'Todo', priority: 'Medium', difficulty: 'Easy', due_date: '', planned_date: '', estimate_minutes: null, spent_minutes: null, checklist: [], dependencies: [] },
+    // زیرفاز 1.5-و (سند 012): وضعیت مودال «برنامه روز» — دیدن/افزودن برنامه یک روز از داشبورد
+    planModalOpen: false,
+    planModalDate: '',
+    plannerFilter: '',
     taskFormError: '',
     newChecklistItemTitle: '',
 
@@ -6523,7 +6787,7 @@ function app() {
       this.editingTaskId = null;
       this.taskForm = {
         title: '', description: '', status: status || 'Todo', priority: 'Medium', difficulty: 'Easy',
-        due_date: '', estimate_minutes: null, spent_minutes: null, checklist: [], dependencies: [],
+        due_date: '', planned_date: '', estimate_minutes: null, spent_minutes: null, checklist: [], dependencies: [],
       };
       this.newChecklistItemTitle = '';
       this.taskFormError = '';
@@ -6540,6 +6804,7 @@ function app() {
         priority: task.priority || 'Medium',
         difficulty: task.difficulty || 'Easy',
         due_date: task.due_date || '',
+        planned_date: task.planned_date ? String(task.planned_date).slice(0, 10) : '',
         estimate_minutes: task.estimate_minutes ?? null,
         spent_minutes: task.spent_minutes ?? null,
         checklist: (task.checklist || []).map(i => ({ ...i })),
@@ -6593,6 +6858,7 @@ function app() {
         priority: this.taskForm.priority,
         difficulty: this.taskForm.difficulty,
         due_date: this.taskForm.due_date || null,
+        planned_date: this.taskForm.planned_date || null, // سند 005 نسخه 4.2 — مستقل از due_date
         estimate_minutes: (this.taskForm.estimate_minutes === null || this.taskForm.estimate_minutes === undefined || this.taskForm.estimate_minutes === '') ? null : Number(this.taskForm.estimate_minutes),
         spent_minutes: (this.taskForm.spent_minutes === null || this.taskForm.spent_minutes === undefined || this.taskForm.spent_minutes === '') ? null : Number(this.taskForm.spent_minutes),
         checklist: this.taskForm.checklist,
@@ -8017,13 +8283,16 @@ function app() {
 
     /* ====================================================================
        زیرفاز 1.5-الف (سند 012) — Today's Mission
-       الگوریتم قطعی چهارمرحله‌ای، بدون فراخوانی AI:
+       به‌روزشده در زیرفاز 1.5-و: مرحله صفر جدید؛ مراحل ۱ تا ۳ بدون تغییر؛
+       مرحله ۴ به «هدایت به Goals» تغییر کرد (تجمیع نقاط ورودی AI).
+       الگوریتم قطعی، بدون فراخوانی AI:
+       ۰. تسک با planned_date = امروز (بالاترین Priority، سپس نزدیک‌ترین due_date)
        ۱. تسک In Progress با بالاترین Priority و نزدیک‌ترین Deadline
        ۲. نزدیک‌ترین Lesson/Practice ناتمام (پیمایش به ترتیب created_at)
-       ۳. تسک «آماده» (نگاشت مصوب این چت: Todo یا Review) با بالاترین Priority
-       ۴. هیچ‌کدام → دعوت متنی به AI Interview (خود Interview در 1.5-ج ساخته می‌شود)
+       ۳. تسک «آماده» (نگاشت مصوب: Todo یا Review) با بالاترین Priority
+       ۴. هیچ‌کدام → هدایت ساده به ماژول Goals (در HTML مدیریت می‌شود)
        نکته: «Ready» در وضعیت‌های واقعی Task وجود ندارد؛ نگاشت Todo+Review
-       تصمیم ثبت‌شده کاربر در چت اجرایی این زیرفاز است.
+       تصمیم ثبت‌شده کاربر در چت اجرایی زیرفاز 1.5-الف است.
        ==================================================================== */
 
     _priorityRank(p) {
@@ -8032,9 +8301,11 @@ function app() {
     },
 
     // انتخاب قطعی تسک: اولویت بالاتر → ددلاین نزدیک‌تر (بدون ددلاین = آخر) → قدیمی‌تر
-    _pickTaskMission(statuses) {
+    // زیرفاز 1.5-و: پارامتر اختیاری extraFilter اضافه شد (Existing First — فراخوانی‌های قبلی دست‌نخورده)
+    _pickTaskMission(statuses, extraFilter) {
       const all = StorageLayer.list('tasks').data || [];
-      const pool = all.filter(t => statuses.includes(t.status));
+      let pool = all.filter(t => statuses.includes(t.status));
+      if (extraFilter) pool = pool.filter(extraFilter);
       if (!pool.length) return null;
       pool.sort((a, b) => {
         const pr = this._priorityRank(b.priority) - this._priorityRank(a.priority);
@@ -8074,6 +8345,19 @@ function app() {
 
     get todaysMission() {
       this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
+      // مرحله ۰ (زیرفاز 1.5-و — سند 012): تسک برنامه‌ریزی‌شده برای امروز
+      const _today = this.todayDateString();
+      const planned = this._pickTaskMission(['Todo', 'In Progress', 'Review'], t => t.planned_date && String(t.planned_date).slice(0, 10) === _today);
+      if (planned) {
+        const proj = StorageLayer.getById('projects', planned.project_id);
+        const projTitle = proj && proj.success && proj.data ? proj.data.title : '';
+        return {
+          kind: 'task', entity: planned,
+          typeLabel: 'برنامه امروز', badgeClass: 'badge-progress',
+          title: planned.title,
+          context: (projTitle ? 'پروژه: ' + projTitle + ' — ' : '') + 'اولویت: ' + this.priorityMeta(planned.priority).label + (planned.due_date ? ' — ددلاین: ' + this.formatDueDate(planned.due_date) : ''),
+        };
+      }
       // مرحله ۱
       const inProgress = this._pickTaskMission(['In Progress']);
       if (inProgress) {
@@ -8109,7 +8393,7 @@ function app() {
           context: (projTitle ? 'پروژه: ' + projTitle + ' — ' : '') + 'اولویت: ' + this.priorityMeta(ready.priority).label + (ready.due_date ? ' — ددلاین: ' + this.formatDueDate(ready.due_date) : ''),
         };
       }
-      // مرحله ۴ — دعوت متنی (در HTML مدیریت می‌شود)
+      // مرحله ۴ (بازنگری 1.5-و) — هدایت ساده به Goals (در HTML مدیریت می‌شود؛ بدون دکمه مستقیم Interview)
       return null;
     },
 
@@ -8163,6 +8447,182 @@ function app() {
     goToContinueTarget() {
       const c = this.continueTarget;
       if (c) this._goToEntity(c.kind, c.entity);
+    },
+
+    /* ====================================================================
+       زیرفاز 1.5-و (سند 012) — داشبورد تعاملی بر پایه planned_date
+       قوانین معنایی (سند 005 نسخه 4.2): تنظیم/حذف planned_date هیچ اثر جانبی
+       روی status/priority/due_date ندارد؛ تسک عقب‌افتاده هرگز خودکار تغییر
+       وضعیت نمی‌دهد (Human in Control). همه توابع این بخش فقط فیلدی را تغییر
+       می‌دهند که اقدام صریح کاربر به آن اشاره دارد.
+       ==================================================================== */
+
+    // هدایت حالت خالی داشبورد به ماژول Goals — جایگزین دکمه مستقیم Interview (سند 002 نسخه 3.3)
+    goToGoalsFromDashboard() {
+      this.loadGoals();
+      const mod = this.modules.find(m => m.id === 'goals');
+      if (mod) this.goTo(mod);
+    },
+
+    // نام پروژه برای نمایش کنار هر تسک در لیست‌های داشبورد
+    _projectTitle(projectId) {
+      const res = StorageLayer.getById('projects', projectId);
+      return res && res.success && res.data ? res.data.title : 'بدون پروژه';
+    },
+
+    _plannedDateOf(task) {
+      return task.planned_date ? String(task.planned_date).slice(0, 10) : '';
+    },
+
+    // لیست «برنامه امروز»: همه تسک‌های planned_date = امروز (شامل Done برای نمایش پیشرفت)
+    get todaysPlanTasks() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
+      const today = this.todayDateString();
+      const list = (StorageLayer.list('tasks').data || [])
+        .filter(t => t.status !== 'Archived' && this._plannedDateOf(t) === today);
+      list.sort((a, b) => {
+        const doneOrder = (a.status === 'Done' ? 1 : 0) - (b.status === 'Done' ? 1 : 0);
+        if (doneOrder !== 0) return doneOrder; // انجام‌شده‌ها آخر
+        const pr = this._priorityRank(b.priority) - this._priorityRank(a.priority);
+        if (pr !== 0) return pr;
+        const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const db = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        if (da !== db) return da - db;
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      return list;
+    },
+
+    // «عقب‌افتاده از برنامه»: planned_date گذشته و ناتمام — فقط نمایش؛ هیچ تغییر خودکاری
+    get behindPlanTasks() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
+      const today = this.todayDateString();
+      return (StorageLayer.list('tasks').data || [])
+        .filter(t => !['Done', 'Archived'].includes(t.status) && this._plannedDateOf(t) && this._plannedDateOf(t) < today)
+        .sort((a, b) => this._plannedDateOf(a).localeCompare(this._plannedDateOf(b)));
+    },
+
+    // نوار هفتگی: هفته تقویمی شمسی (شنبه تا جمعه) — تصمیم ثبت‌شده کاربر در چت اجرایی 1.5-و
+    get weekDays() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
+      const now = new Date();
+      const sinceSaturday = (now.getDay() + 1) % 7; // getDay: 0=یکشنبه … 6=شنبه ⇒ شنبه = فاصله صفر
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - sinceSaturday);
+      const today = this.todayDateString();
+      const tasks = StorageLayer.list('tasks').data || [];
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const j = toJalaali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        days.push({
+          date: iso,
+          weekday: JALALI_WEEKDAYS[d.getDay()],
+          jd: j.jd,
+          jm: j.jm,
+          isToday: iso === today,
+          isPast: iso < today,
+          plannedCount: tasks.filter(t => t.status !== 'Archived' && this._plannedDateOf(t) === iso).length,
+          deadlineCount: tasks.filter(t => !['Done', 'Archived'].includes(t.status) && t.due_date && String(t.due_date).slice(0, 10) === iso).length,
+        });
+      }
+      return days;
+    },
+
+    get weekRangeLabel() {
+      const days = this.weekDays;
+      if (!days.length) return '';
+      const a = this.jalaliPartsOf(days[0].date);
+      const b = this.jalaliPartsOf(days[6].date);
+      if (a.jm === b.jm) return a.jd + ' تا ' + b.jd + ' ' + JALALI_MONTHS[a.jm - 1] + ' ' + a.jy;
+      return a.jd + ' ' + JALALI_MONTHS[a.jm - 1] + ' تا ' + b.jd + ' ' + JALALI_MONTHS[b.jm - 1] + ' ' + b.jy;
+    },
+
+    // ---- مودال «برنامه روز» — دیدن/افزودن برنامه هر روز از نوار هفتگی یا دکمه «افزودن تسک» ----
+
+    openDayPlan(dateStr) {
+      this.planModalDate = dateStr;
+      this.plannerFilter = '';
+      this.planModalOpen = true;
+    },
+
+    get planModalIsPast() {
+      return !!this.planModalDate && this.planModalDate < this.todayDateString();
+    },
+
+    get planModalTasks() {
+      this._dashRefresh; // سیگنال بیداری Alpine
+      if (!this.planModalDate) return [];
+      return (StorageLayer.list('tasks').data || [])
+        .filter(t => t.status !== 'Archived' && this._plannedDateOf(t) === this.planModalDate)
+        .sort((a, b) => this._priorityRank(b.priority) - this._priorityRank(a.priority));
+    },
+
+    get planModalDeadlines() {
+      this._dashRefresh; // سیگنال بیداری Alpine
+      if (!this.planModalDate) return [];
+      return (StorageLayer.list('tasks').data || [])
+        .filter(t => !['Done', 'Archived'].includes(t.status) && t.due_date && String(t.due_date).slice(0, 10) === this.planModalDate)
+        .sort((a, b) => this._priorityRank(b.priority) - this._priorityRank(a.priority));
+    },
+
+    // انتخابگر تسک از همه پروژه‌ها: تسک‌های فعال که هنوز برای این روز برنامه‌ریزی نشده‌اند
+    get plannerCandidates() {
+      this._dashRefresh; // سیگنال بیداری Alpine
+      if (!this.planModalDate) return [];
+      const q = this.plannerFilter.trim();
+      let pool = (StorageLayer.list('tasks').data || [])
+        .filter(t => ['Todo', 'In Progress', 'Review'].includes(t.status) && this._plannedDateOf(t) !== this.planModalDate);
+      if (q) {
+        pool = pool.filter(t => (t.title || '').includes(q) || this._projectTitle(t.project_id).includes(q));
+      }
+      pool.sort((a, b) => {
+        const pr = this._priorityRank(b.priority) - this._priorityRank(a.priority);
+        if (pr !== 0) return pr;
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      return pool.slice(0, 30); // سقف نمایش — انتخابگر است، نه آرشیو (سند 002: داشبورد فقط نیاز روز)
+    },
+
+    // ---- اقدامات مستقیم از داشبورد — هرکدام فقط همان فیلد اقدام کاربر را تغییر می‌دهند ----
+
+    // افزودن به برنامه یک روز: فقط planned_date (سند 005: بدون اثر جانبی)
+    addToPlan(task) {
+      const res = StorageLayer.update('tasks', task.id, { planned_date: this.planModalDate });
+      if (!res.success) { this.showToast(res.error.message); return; }
+      this.bumpDashRefresh();
+      this.showToast('«' + task.title + '» به برنامه ' + this.jalaliFullLabel(this.planModalDate) + ' اضافه شد.');
+    },
+
+    // حذف از برنامه: فقط پاک‌کردن planned_date — status/priority/due_date دست‌نخورده
+    removeFromPlan(task) {
+      const res = StorageLayer.update('tasks', task.id, { planned_date: null });
+      if (!res.success) { this.showToast(res.error.message); return; }
+      this.bumpDashRefresh();
+      this.showToast('«' + task.title + '» از برنامه حذف شد — خود تسک سر جایش است.');
+    },
+
+    // اقدام یک‌کلیکی «انتقال به امروز»: فقط planned_date = امروز — وضعیت تغییر نمی‌کند (Human in Control)
+    moveToToday(task) {
+      const res = StorageLayer.update('tasks', task.id, { planned_date: this.todayDateString() });
+      if (!res.success) { this.showToast(res.error.message); return; }
+      this.bumpDashRefresh();
+      this.showToast('«' + task.title + '» به برنامه امروز منتقل شد.');
+    },
+
+    // تغییر وضعیت مستقیم از داشبورد — اقدام صریح کاربر روی status؛ planned_date دست‌نخورده
+    setPlanTaskStatus(task, status) {
+      const prevStatus = task.status;
+      const wasMission = !!(this.todaysMission && this.todaysMission.kind === 'task' && this.todaysMission.entity.id === task.id);
+      const res = StorageLayer.update('tasks', task.id, { status });
+      if (!res.success) { this.showToast(res.error.message); return; }
+      this.bumpDashRefresh();
+      if (status === 'Done' && prevStatus !== 'Done') this.celebrate(task.title, wasMission); // لحظه تکمیل — زیرفاز 1.5-د
+    },
+
+    // تیک تکمیل: Done ⇄ Todo (برداشتن تیک = بازگشت به «برای انجام»)
+    togglePlanTaskDone(task) {
+      this.setPlanTaskStatus(task, task.status === 'Done' ? 'Todo' : 'Done');
     },
 
     // مقادیر واقعی ردیف فشرده KPI — بازاستفاده از Getterهای موجود Analytics (تصمیم ثبت‌شده کاربر)
