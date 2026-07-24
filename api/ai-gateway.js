@@ -70,8 +70,26 @@ function buildClassifyPrompt(rawText) {
   return { systemPrompt, userPrompt };
 }
 
+// ---- Prompt Orchestrator برای AI Interview (سند 012 · زیرفاز 1.5-ج · مود سوم Gateway) ----
+// ورودی: یک جمله هدف کاربر. خروجی: Draft 0 = هدف + یک پروژه + حداکثر ۵ تسک اول.
+// فیلدهای Goal طبق تصمیم ثبت‌شده کاربر در چت اجرایی: title + reason + success_metric.
+function buildInterviewPrompt(goalSentence) {
+  const systemPrompt =
+    'تو یک منتور برنامه‌ریزی هستی داخل اپلیکیشن «AI Learning OS». ' +
+    'کاربر فقط یک جمله درباره هدفش نوشته. تو باید یک پیش‌نویس اولیه (Draft 0) بسازی: ' +
+    'یک «هدف» شفاف، یک «پروژه» عملی برای شروع، و حداکثر ۵ «تسک» اولِ کوچک و قابل انجام. ' +
+    'همه متن‌ها فارسی، مشخص و بدون کلی‌گویی باشند. ' +
+    'فقط و فقط یک JSON خام و معتبر برگردون، دقیقاً با این شکل، بدون هیچ متن اضافه یا Markdown fence: ' +
+    '{"goal": {"title": "عنوان کوتاه هدف", "reason": "چرا این هدف مهم است — یک جمله", "success_metric": "با چه معیاری موفقیت سنجیده می‌شود — یک جمله"}, ' +
+    '"project": {"title": "عنوان اولین پروژه عملی", "description": "توضیح کوتاه پروژه"}, ' +
+    '"tasks": [{"title": "عنوان تسک", "priority": "Low یا Medium یا High یا Critical"}]} ' +
+    '— آرایه tasks بین ۱ تا ۵ عضو داشته باشد و اولویت هر تسک را واقع‌بینانه انتخاب کن.';
+  const userPrompt = `جمله هدف کاربر:\n${goalSentence}`;
+  return { systemPrompt, userPrompt };
+}
+
 // ---- فراخوانی Gemini (Google AI Studio — رایگان، بدون کارت بانکی) ----
-async function callGemini(systemPrompt, userPrompt) {
+async function callGemini(systemPrompt, userPrompt, maxTokens = 500) { // eslint-disable-line no-unused-vars — Gemini مثل قبل بدون سقف صریح
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY تنظیم نشده است.');
   const resp = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
@@ -91,7 +109,7 @@ async function callGemini(systemPrompt, userPrompt) {
 }
 
 // ---- فراخوانی Claude (Anthropic Messages API) ----
-async function callClaude(systemPrompt, userPrompt) {
+async function callClaude(systemPrompt, userPrompt, maxTokens = 500) {
   if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY تنظیم نشده است.');
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -102,7 +120,7 @@ async function callClaude(systemPrompt, userPrompt) {
     },
     body: JSON.stringify({
       model: ANTHROPIC_MODEL,
-      max_tokens: 500,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
     }),
@@ -114,7 +132,7 @@ async function callClaude(systemPrompt, userPrompt) {
 }
 
 // ---- فراخوانی OpenAI (Chat Completions API) ----
-async function callOpenAI(systemPrompt, userPrompt) {
+async function callOpenAI(systemPrompt, userPrompt, maxTokens = 500) {
   if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY تنظیم نشده است.');
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -124,7 +142,7 @@ async function callOpenAI(systemPrompt, userPrompt) {
     },
     body: JSON.stringify({
       model: OPENAI_MODEL,
-      max_tokens: 500,
+      max_tokens: maxTokens,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
@@ -138,7 +156,7 @@ async function callOpenAI(systemPrompt, userPrompt) {
 }
 
 // ---- Fallback خودکار: اگر Provider اول شکست خورد، بعدی رو امتحان کن (بند 128) ----
-async function callWithFallback(preferredProvider, systemPrompt, userPrompt) {
+async function callWithFallback(preferredProvider, systemPrompt, userPrompt, maxTokens = 500) {
   const allOrders = {
     gemini: ['gemini', 'claude', 'openai'],
     claude: ['claude', 'gemini', 'openai'],
@@ -149,7 +167,7 @@ async function callWithFallback(preferredProvider, systemPrompt, userPrompt) {
   const errors = {};
   for (const provider of order) {
     try {
-      const text = await callers[provider](systemPrompt, userPrompt);
+      const text = await callers[provider](systemPrompt, userPrompt, maxTokens);
       return { text, provider };
     } catch (e) {
       errors[provider] = e.message || 'خطای نامشخص';
@@ -208,6 +226,69 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         success: true,
         data: { suggested_type: parsed.suggested_type, reason: parsed.reason || '', provider },
+        error: null,
+      });
+    }
+
+    // ---- مود سوم: interview (سند 012 · زیرفاز 1.5-ج · مصوب سند 003 نسخه 2.2) ----
+    // نکته آشتی اسناد: طبق اسناد 003/008 هر فراخوانی باید در ai_logs ثبت شود، اما نه دو مود
+    // قبلی لاگ می‌نویسند و نه جدول ai_logs در دیتابیس وجود دارد (تأیید‌شده در Audit این زیرفاز).
+    // این مود عمداً همرفتار با دو مود موجود است؛ شکاف در فهرست آشتی اسناد ثبت شد.
+    if (mode === 'interview') {
+      const goalSentence = ((body.context && body.context.goal_sentence) || '').trim();
+      if (!goalSentence) {
+        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'goal_sentence خالی است.' } });
+      }
+      const { systemPrompt, userPrompt } = buildInterviewPrompt(goalSentence);
+      // سقف بالاتر توکن فقط برای این مود — Draft 0 فارسی از ۵۰۰ توکن بزرگ‌تر است
+      const { text, provider } = await callWithFallback(requestedProvider, systemPrompt, userPrompt, 1500);
+
+      let parsed;
+      try {
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        return res.status(502).json({ success: false, error: { code: 'PARSE_ERROR', message: 'پاسخ AI به‌صورت JSON معتبر نبود.' } });
+      }
+
+      // اعتبارسنجی و نرمال‌سازی ساختار ثابت (بدون Silent Failure — سند 008)
+      const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+      const goal = parsed && parsed.goal;
+      const project = parsed && parsed.project;
+      const rawTasks = parsed && parsed.tasks;
+      if (!goal || typeof goal.title !== 'string' || !goal.title.trim() ||
+          !project || typeof project.title !== 'string' || !project.title.trim() ||
+          !Array.isArray(rawTasks) || rawTasks.length === 0) {
+        return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'ساختار Draft 0 برگشتی نامعتبر بود.' } });
+      }
+      const tasks = rawTasks
+        .filter((t) => t && typeof t.title === 'string' && t.title.trim())
+        .slice(0, 5) // سقف ۵ تسک — قید صریح سند 012
+        .map((t) => ({
+          title: t.title.trim(),
+          priority: validPriorities.includes(t.priority) ? t.priority : 'Medium',
+        }));
+      if (!tasks.length) {
+        return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'هیچ تسک معتبری در Draft 0 نبود.' } });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          draft: {
+            goal: {
+              title: goal.title.trim(),
+              reason: (typeof goal.reason === 'string' ? goal.reason.trim() : ''),
+              success_metric: (typeof goal.success_metric === 'string' ? goal.success_metric.trim() : ''),
+            },
+            project: {
+              title: project.title.trim(),
+              description: (typeof project.description === 'string' ? project.description.trim() : ''),
+            },
+            tasks,
+          },
+          provider,
+        },
         error: null,
       });
     }
