@@ -1007,19 +1007,22 @@
         </div>
       </template>
 
-      <!-- حالت ۴ الگوریتم: فقط دعوت متنی — AI Interview در زیرفاز 1.5-ج ساخته می‌شود -->
+      <!-- حالت ۴ الگوریتم: دعوت به AI Interview — نقطه ورود دوم زیرفاز 1.5-ج (سند 012) -->
       <template x-if="!todaysMission">
         <div class="mission-body">
           <div class="mission-main">
             <h2>از کجا شروع کنم؟</h2>
             <p class="mission-context">
-              کار فعالی برای امروز پیدا نشد. در زیرفاز بعدی (1.5-ج طبق سند 012)، «مصاحبه با AI» همین‌جا فعال می‌شود:
-              یک جمله هدف می‌نویسی و AI پیش‌نویس هدف، پروژه و تسک‌های اولت را پیشنهاد می‌دهد.
-              تا آن زمان، می‌توانی از ماژول Goals یک هدف بسازی یا یک ایده خام در Inbox بیندازی.
+              کار فعالی برای امروز پیدا نشد. یک جمله درباره هدفت بنویس تا AI پیش‌نویس هدف،
+              اولین پروژه و تسک‌های اولت را پیشنهاد بدهد — تصمیم نهایی و ویرایش همیشه با خودت است.
             </p>
           </div>
-          <div class="mission-actions" x-show="continueTarget">
-            <button class="btn btn-secondary" @click="goToContinueTarget()">
+          <div class="mission-actions">
+            <button class="btn btn-primary" @click="openInterview()">
+              <span x-html="icon('sparkles')"></span>
+              <span>شروع با AI</span>
+            </button>
+            <button class="btn btn-secondary" x-show="continueTarget" @click="goToContinueTarget()">
               <span x-html="icon('refresh-cw')"></span>
               <span x-text="'ادامه از جایی که بودی: ' + continueTarget.title"></span>
             </button>
@@ -1162,10 +1165,16 @@
           <h1>اهداف</h1>
           <p class="subtitle">بالاترین سطح برنامه‌ریزی — طبق بند ۹۱ سند چشم‌انداز: هر هدف می‌تواند به چند پروژه متصل باشد.</p>
         </div>
-        <button class="btn btn-primary" @click="openCreateGoal()">
-          <span x-html="icon('plus')"></span>
-          <span>هدف جدید</span>
-        </button>
+        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
+          <button class="btn btn-secondary" @click="openInterview()">
+            <span x-html="icon('sparkles')"></span>
+            <span>شروع با AI</span>
+          </button>
+          <button class="btn btn-primary" @click="openCreateGoal()">
+            <span x-html="icon('plus')"></span>
+            <span>هدف جدید</span>
+          </button>
+        </div>
       </div>
 
       <template x-if="goals.length === 0">
@@ -3401,6 +3410,105 @@
      منبع فیلدها: 005 (Base Entity) + 002 (نقش ماژول) — Mood/TimeLog/AI-Discussions
      طبق تصمیمات این چت اضافه شدند (Gap مستندات).
      ===================================================================== -->
+<!-- ===== مودال AI Interview — Draft 0 (زیرفاز 1.5-ج · سند 012) ===== -->
+<div class="modal-overlay" x-show="interview.open" x-cloak x-transition @keydown.escape.window="interview.open && closeInterview()">
+  <div class="modal" @click.outside="closeInterview()" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2>شروع با AI</h2>
+        <p>یک جمله درباره هدفت بنویس؛ AI یک پیش‌نویس کامل پیشنهاد می‌دهد. هیچ‌چیز بدون تأیید تو ثبت نمی‌شود.</p>
+      </div>
+      <button class="icon-btn" @click="closeInterview()" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- مرحله ۱: ورودی جمله هدف -->
+      <template x-if="interview.stage === 'input'">
+        <div style="display:flex; flex-direction:column; gap:var(--space-m);">
+          <div class="form-group">
+            <label class="form-label" for="iv-sentence">جمله هدف</label>
+            <textarea id="iv-sentence" class="form-input" rows="2" placeholder="مثلاً: می‌خواهم توسعه‌دهنده AI شوم" x-model="interview.sentence" @keydown.enter.prevent="submitInterviewSentence()"></textarea>
+            <span class="form-helper">فقط یک جمله کافی است — جزئیات را بعداً در پیش‌نویس ویرایش می‌کنی.</span>
+          </div>
+          <p class="form-error" x-show="interview.error" x-text="interview.error"></p>
+        </div>
+      </template>
+
+      <!-- مرحله ۲: در انتظار Gateway -->
+      <template x-if="interview.stage === 'loading'">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:var(--space-m); padding-block:var(--space-xl);">
+          <div class="spinner"></div>
+          <p style="color:var(--color-text-secondary);">در حال ساخت پیش‌نویس با AI…</p>
+        </div>
+      </template>
+
+      <!-- مرحله ۳: Draft 0 قابل‌ویرایش -->
+      <template x-if="interview.stage === 'edit' && interview.draft">
+        <div style="display:flex; flex-direction:column; gap:var(--space-l);">
+          <p class="form-helper">این فقط یک پیش‌نویس است (Draft 0) — هر بخش را می‌توانی تغییر دهی یا تسک‌ها را حذف کنی. با بستن پنجره، پیش‌نویس از بین می‌رود و هیچ رکوردی ساخته نمی‌شود.</p>
+
+          <div class="form-group">
+            <label class="form-label" for="iv-goal-title">هدف</label>
+            <input id="iv-goal-title" class="form-input" type="text" x-model="interview.draft.goal.title" placeholder="عنوان هدف">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="iv-goal-reason">چرا این هدف مهم است؟</label>
+            <textarea id="iv-goal-reason" class="form-input" rows="2" x-model="interview.draft.goal.reason"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="iv-goal-metric">معیار موفقیت</label>
+            <textarea id="iv-goal-metric" class="form-input" rows="2" x-model="interview.draft.goal.success_metric"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="iv-project-title">اولین پروژه</label>
+            <input id="iv-project-title" class="form-input" type="text" x-model="interview.draft.project.title" placeholder="عنوان پروژه">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="iv-project-desc">توضیح پروژه</label>
+            <textarea id="iv-project-desc" class="form-input" rows="2" x-model="interview.draft.project.description"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">تسک‌های اول (حداکثر ۵)</label>
+            <div style="display:flex; flex-direction:column; gap:var(--space-s);">
+              <template x-for="(t, idx) in interview.draft.tasks" :key="idx">
+                <div style="display:flex; align-items:center; gap:var(--space-s);">
+                  <input class="form-input" type="text" x-model="t.title" style="flex:1;" placeholder="عنوان تسک">
+                  <select class="form-select" x-model="t.priority" style="width:auto;">
+                    <template x-for="opt in priorityOptions" :key="opt.value">
+                      <option :value="opt.value" x-text="opt.label" :selected="t.priority === opt.value"></option>
+                    </template>
+                  </select>
+                  <button class="mini-icon-btn" @click="removeInterviewTask(idx)" title="حذف تسک" aria-label="حذف تسک">
+                    <span x-html="icon('x')"></span>
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <p class="form-error" x-show="interview.error" x-text="interview.error"></p>
+        </div>
+      </template>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="closeInterview()">انصراف</button>
+      <button class="btn btn-primary" x-show="interview.stage === 'input'" @click="submitInterviewSentence()">
+        <span x-html="icon('sparkles')"></span>
+        <span>ساخت پیش‌نویس</span>
+      </button>
+      <button class="btn btn-primary" x-show="interview.stage === 'edit'" :disabled="interview.saving" @click="confirmInterviewDraft()">
+        <span x-html="icon('check-circle-2')"></span>
+        <span x-text="interview.saving ? 'در حال ساخت…' : 'تأیید و ساخت'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" x-show="journalModalOpen" x-cloak x-transition @keydown.escape.window="journalModalOpen = false">
   <div class="modal" @click.outside="journalModalOpen = false" role="dialog" aria-modal="true">
     <div class="modal-header">
@@ -4612,6 +4720,31 @@ const StorageLayer = (() => {
     },
 
 
+    /** فراخوانی واقعی Gateway برای تولید Draft 0 از یک جمله هدف (سند 012 · مود سوم — زیرفاز 1.5-ج) */
+    async requestInterviewDraft(goalSentence) {
+      const url = localStorage.getItem(PREF_PREFIX + 'ai_gateway_url');
+      if (!url) return fail('ابتدا از Settings به AI Gateway وصل شوید.', 'NOT_CONNECTED');
+      const secret = await this.resolveAiGatewaySecret();
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(secret ? { 'x-gateway-secret': secret } : {}),
+          },
+          body: JSON.stringify({ mode: 'interview', provider: 'auto', context: { goal_sentence: goalSentence } }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+          return fail((data.error && data.error.message) || 'خطای Gateway.', 'GATEWAY_ERROR');
+        }
+        return ok(data.data);
+      } catch (e) {
+        return fail('خطا در ارتباط با Gateway: ' + (e.message || 'نامشخص'), 'NETWORK_ERROR');
+      }
+    },
+
+
     async bootFromSavedConfig() {
       const url = localStorage.getItem(PREF_PREFIX + 'supabase_url');
       const encKey = localStorage.getItem(PREF_PREFIX + 'supabase_anon_key_enc');
@@ -5806,6 +5939,132 @@ function app() {
       this.goalModalOpen = false;
       this.loadGoals();
       this.showToast(this.goalModalMode === 'create' ? 'هدف ایجاد شد.' : 'هدف به‌روزرسانی شد.');
+    },
+
+    /* ====================================================================
+       زیرفاز 1.5-ج (سند 012) — AI Interview (مود سوم Gateway)
+       جریان: یک جمله هدف → Draft 0 (هدف + پروژه + حداکثر ۵ تسک) → مودال
+       قابل‌ویرایش → فقط پس از تأیید صریح، ساخت رکوردها (Human in Control).
+       Draft 0 عمداً ماندگار نیست (Trade-off آگاهانه سند 012): بستن مودال = از بین رفتن پیش‌نویس.
+       ==================================================================== */
+
+    interview: {
+      open: false,
+      stage: 'input',   // 'input' | 'loading' | 'edit'
+      sentence: '',
+      error: '',
+      draft: null,      // {goal:{title,reason,success_metric}, project:{title,description}, tasks:[{title,priority}]}
+      provider: '',
+      saving: false,
+    },
+
+    openInterview() {
+      this.interview = { open: true, stage: 'input', sentence: '', error: '', draft: null, provider: '', saving: false };
+    },
+
+    closeInterview() {
+      // طبق سند 012: رد یا بستن مودال → هیچ رکوردی ساخته نمی‌شود و پیش‌نویس از بین می‌رود
+      this.interview = { open: false, stage: 'input', sentence: '', error: '', draft: null, provider: '', saving: false };
+    },
+
+    async submitInterviewSentence() {
+      const sentence = this.interview.sentence.trim();
+      if (!sentence) { this.interview.error = 'یک جمله درباره هدفت بنویس.'; return; }
+      this.interview.error = '';
+      this.interview.stage = 'loading';
+      const res = await StorageLayer.requestInterviewDraft(sentence);
+      if (!res.success) {
+        this.interview.stage = 'input';
+        this.interview.error = res.error.message;
+        return;
+      }
+      this.interview.draft = res.data.draft;
+      this.interview.provider = res.data.provider || '';
+      this.interview.stage = 'edit';
+    },
+
+    removeInterviewTask(idx) {
+      this.interview.draft.tasks.splice(idx, 1);
+    },
+
+    /** ساخت اتمیک پس از تأیید صریح کاربر — طبق الگوی تبدیل InboxItem (سند 005).
+        StorageLayer تراکنش واقعی ندارد؛ اتمیک‌بودن با Rollback دستی شبیه‌سازی می‌شود:
+        اگر هر مرحله شکست بخورد، رکوردهای ساخته‌شده با حذف سخت (hard) پاک می‌شوند
+        (حذف سخت چون این رکوردها هنوز «داده واقعی کاربر» نشده‌اند). */
+    confirmInterviewDraft() {
+      const d = this.interview.draft;
+      if (!d) return;
+      const goalTitle = (d.goal.title || '').trim();
+      const projectTitle = (d.project.title || '').trim();
+      const tasks = d.tasks.filter(t => (t.title || '').trim());
+      if (!goalTitle) { this.interview.error = 'عنوان هدف الزامی است.'; return; }
+      if (!projectTitle) { this.interview.error = 'عنوان پروژه الزامی است.'; return; }
+      if (!tasks.length) { this.interview.error = 'حداقل یک تسک لازم است.'; return; }
+      this.interview.error = '';
+      this.interview.saving = true;
+
+      // وضعیت‌ها طبق تصمیم ثبت‌شده کاربر: Goal/Project = Active، تسک‌ها = Todo
+      const goalRes = StorageLayer.create('goals', {
+        title: goalTitle,
+        description: '',
+        reason: (d.goal.reason || '').trim(),
+        success_metric: (d.goal.success_metric || '').trim(),
+        priority: 'Medium',
+        status: 'Active',
+        target_date: null,
+      });
+      if (!goalRes.success) { this.interview.saving = false; this.interview.error = goalRes.error.message; return; }
+
+      const projectRes = StorageLayer.create('projects', {
+        title: projectTitle,
+        description: (d.project.description || '').trim(),
+        status: 'Active',
+        priority: 'Medium',
+        version: 'v1',
+        tags: [],
+        goal_id: goalRes.data.id,
+      });
+      if (!projectRes.success) {
+        StorageLayer.remove('goals', goalRes.data.id, { hard: true });
+        this.interview.saving = false;
+        this.interview.error = projectRes.error.message;
+        return;
+      }
+
+      const createdTaskIds = [];
+      for (const t of tasks) {
+        const taskRes = StorageLayer.create('tasks', {
+          project_id: projectRes.data.id,
+          title: t.title.trim(),
+          description: '',
+          status: 'Todo',
+          priority: t.priority || 'Medium',
+          difficulty: 'Medium',
+          due_date: null,
+          estimate_minutes: null,
+          spent_minutes: null,
+          checklist: [],
+          dependencies: [],
+          related_files: [],
+          related_prompt: null,
+        });
+        if (!taskRes.success) {
+          createdTaskIds.forEach(id => StorageLayer.remove('tasks', id, { hard: true }));
+          StorageLayer.remove('projects', projectRes.data.id, { hard: true });
+          StorageLayer.remove('goals', goalRes.data.id, { hard: true });
+          this.interview.saving = false;
+          this.interview.error = taskRes.error.message;
+          return;
+        }
+        createdTaskIds.push(taskRes.data.id);
+      }
+
+      this.interview.saving = false;
+      this.closeInterview();
+      this.loadGoals();
+      this.loadProjects();
+      this.showToast('هدف، پروژه و ' + createdTaskIds.length + ' تسک ساخته شد.');
+      this.currentView = 'goals';
     },
 
     askDeleteGoal(goal) {
