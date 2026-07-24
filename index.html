@@ -366,6 +366,40 @@
   .kpi-card .kpi-title{ font-size:var(--text-small); font-weight:600; }
   .kpi-card .kpi-desc{ font-size:var(--text-caption); color:var(--color-text-secondary); }
 
+  /* ---- زیرفاز 1.5-الف (سند 012): داشبورد تصمیم‌محور ---- */
+  .mission-card{
+    border-inline-start:4px solid var(--color-primary);
+    display:flex; flex-direction:column; gap:var(--space-m);
+  }
+  .mission-kicker{
+    display:flex; align-items:center; gap:var(--space-s);
+    font-size:var(--text-small); font-weight:700; color:var(--color-primary);
+  }
+  .mission-kicker svg{ width:18px; height:18px; }
+  .mission-body{ display:flex; flex-direction:column; gap:var(--space-m); }
+  .mission-main{ display:flex; flex-direction:column; gap:var(--space-s); align-items:flex-start; }
+  .mission-main h2{ margin:0; }
+  .mission-context{ font-size:var(--text-small); color:var(--color-text-secondary); margin:0; }
+  .mission-actions{ display:flex; flex-wrap:wrap; gap:var(--space-s); }
+
+  .journal-shortcut{
+    display:flex; align-items:center; gap:var(--space-m);
+    width:100%; text-align:start; cursor:pointer;
+    font-family:inherit; font-size:inherit; color:inherit;
+  }
+  .journal-shortcut .journal-shortcut-text{ display:flex; flex-direction:column; gap:2px; flex:1; min-width:0; }
+  .journal-shortcut .journal-shortcut-text span{ font-size:var(--text-caption); color:var(--color-text-secondary); }
+  .journal-shortcut .journal-shortcut-arrow svg{ width:18px; height:18px; color:var(--color-text-secondary); }
+
+  .kpi-strip{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:var(--space-m); flex-wrap:wrap;
+  }
+  .kpi-strip-item{ display:flex; align-items:center; gap:var(--space-s); }
+  .kpi-strip-text{ display:flex; flex-direction:column; }
+  .kpi-strip-value{ font-family:var(--font-en); font-size:var(--text-body); font-weight:700; }
+  .kpi-strip-title{ font-size:var(--text-caption); color:var(--color-text-secondary); }
+
   /* Triple columns */
   .triple-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-m); }
   .col-card{ display:flex; flex-direction:column; min-height:260px; }
@@ -908,18 +942,63 @@
       </div>
     </div>
 
-    <div class="kpi-grid">
-      <template x-for="kpi in kpis" :key="kpi.id">
-        <div class="card kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-title" x-text="kpi.title"></span>
-            <div class="kpi-icon"><span x-html="icon(kpi.icon)"></span></div>
+    <!-- زیرفاز 1.5-الف (سند 012): کارت Today's Mission — الگوریتم قطعی چهارمرحله‌ای، بدون AI -->
+    <div class="card mission-card">
+      <div class="mission-kicker">
+        <span x-html="icon('target')"></span>
+        <span>مأموریت امروز</span>
+      </div>
+
+      <template x-if="todaysMission">
+        <div class="mission-body">
+          <div class="mission-main">
+            <span class="badge" :class="todaysMission.badgeClass"><span x-text="todaysMission.typeLabel"></span></span>
+            <h2 x-text="todaysMission.title"></h2>
+            <p class="mission-context" x-text="todaysMission.context"></p>
           </div>
-          <div class="kpi-value">—</div>
-          <p class="kpi-desc" x-text="kpi.desc"></p>
+          <div class="mission-actions">
+            <button class="btn btn-primary" @click="startMission()">
+              <span x-html="icon('target')"></span>
+              <span>شروع</span>
+            </button>
+            <button class="btn btn-secondary" x-show="continueTarget" @click="goToContinueTarget()">
+              <span x-html="icon('refresh-cw')"></span>
+              <span x-text="'ادامه از جایی که بودی: ' + continueTarget.title"></span>
+            </button>
+          </div>
+        </div>
+      </template>
+
+      <!-- حالت ۴ الگوریتم: فقط دعوت متنی — AI Interview در زیرفاز 1.5-ج ساخته می‌شود -->
+      <template x-if="!todaysMission">
+        <div class="mission-body">
+          <div class="mission-main">
+            <h2>از کجا شروع کنم؟</h2>
+            <p class="mission-context">
+              کار فعالی برای امروز پیدا نشد. در زیرفاز بعدی (1.5-ج طبق سند 012)، «مصاحبه با AI» همین‌جا فعال می‌شود:
+              یک جمله هدف می‌نویسی و AI پیش‌نویس هدف، پروژه و تسک‌های اولت را پیشنهاد می‌دهد.
+              تا آن زمان، می‌توانی از ماژول Goals یک هدف بسازی یا یک ایده خام در Inbox بیندازی.
+            </p>
+          </div>
+          <div class="mission-actions" x-show="continueTarget">
+            <button class="btn btn-secondary" @click="goToContinueTarget()">
+              <span x-html="icon('refresh-cw')"></span>
+              <span x-text="'ادامه از جایی که بودی: ' + continueTarget.title"></span>
+            </button>
+          </div>
         </div>
       </template>
     </div>
+
+    <!-- زیرفاز 1.5-الف (سند 012): میانبر ثبت سریع ژورنال — نیمه دوم ستاره قطبی -->
+    <button class="card journal-shortcut" @click="openTodayOrCreate()">
+      <div class="kpi-icon"><span x-html="icon('notebook-pen')"></span></div>
+      <div class="journal-shortcut-text">
+        <strong x-text="todaysJournalEntry ? 'جمع‌بندی امروز ثبت شده — ویرایشش کن' : 'امروز چی یاد گرفتی؟'"></strong>
+        <span>ثبت سریع جمع‌بندی شب در ژورنال</span>
+      </div>
+      <span class="journal-shortcut-arrow" x-html="icon('chevron-left')"></span>
+    </button>
 
     <div class="card">
       <div class="section-title-row" style="margin-bottom:var(--space-m);">
@@ -938,49 +1017,17 @@
       </p>
     </div>
 
-    <div class="triple-grid">
-      <div class="card col-card">
-        <div class="col-card-header">
-          <h3>تسک‌های امروز</h3>
-          <span x-html="icon('list-checks')"></span>
+    <!-- زیرفاز 1.5-الف (سند 012): KPIهای قبلی — منتقل‌شده به یک ردیف فشرده، با مقادیر واقعی (بدون حذف) -->
+    <div class="card kpi-strip">
+      <template x-for="kpi in kpis" :key="'strip-' + kpi.id">
+        <div class="kpi-strip-item">
+          <div class="kpi-icon"><span x-html="icon(kpi.icon)"></span></div>
+          <div class="kpi-strip-text">
+            <span class="kpi-strip-value en" x-text="kpiValue(kpi.id)"></span>
+            <span class="kpi-strip-title" x-text="kpi.title"></span>
+          </div>
         </div>
-        <div class="empty-state">
-          <div class="icon-wrap" x-html="icon('inbox')"></div>
-          <strong>هنوز تسکی ثبت نشده</strong>
-          <p>تسک‌ها پس از فعال شدن ماژول Projects نمایش داده می‌شوند.</p>
-        </div>
-      </div>
-      <div class="card col-card">
-        <div class="col-card-header">
-          <h3>فعالیت اخیر</h3>
-          <span x-html="icon('trending-up')"></span>
-        </div>
-        <div class="empty-state">
-          <div class="icon-wrap" x-html="icon('inbox')"></div>
-          <strong>فعالیتی برای نمایش نیست</strong>
-          <p>فعالیت‌های اخیر از تمام ماژول‌ها اینجا جمع می‌شوند.</p>
-        </div>
-      </div>
-      <div class="card col-card">
-        <div class="col-card-header">
-          <h3>یادداشت‌ها</h3>
-          <span x-html="icon('notebook-pen')"></span>
-        </div>
-        <div class="empty-state">
-          <div class="icon-wrap" x-html="icon('inbox')"></div>
-          <strong>یادداشتی ثبت نشده</strong>
-          <p>یادداشت‌های Knowledge Base اینجا خلاصه می‌شوند.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2 style="margin-bottom:var(--space-m);">خط زمانی</h2>
-      <div class="empty-state" style="padding-block:var(--space-l);">
-        <div class="icon-wrap" x-html="icon('clock')"></div>
-        <strong>خط زمانی خالی است</strong>
-        <p>پس از ثبت اولین فعالیت در Learning یا Projects، اینجا نمایش داده می‌شود.</p>
-      </div>
+      </template>
     </div>
 
   </section>
@@ -4625,6 +4672,7 @@ const ICONS = {
   'chevron-up': '<polyline points="6 15 12 9 18 15"/>',
   'chevron-down': '<polyline points="6 9 12 15 18 9"/>',
   'chevron-right': '<polyline points="9 6 15 12 9 18"/>',
+  'chevron-left': '<polyline points="15 6 9 12 15 18"/>',
   'circle-dot': '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>',
   'refresh-cw': '<path d="M20 11a8 8 0 0 0-14.6-4.5"/><polyline points="20 4 20 9 15 9"/><path d="M4 13a8 8 0 0 0 14.6 4.5"/><polyline points="4 20 4 15 9 15"/>',
   'eye': '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
@@ -7200,6 +7248,170 @@ function app() {
        completed_at ندارد، «همان روز» برای Task/Lesson/Practice از روی
        updated_at رکورد تشخیص داده می‌شود (نزدیک‌ترین معادل موجود در داده).
        ==================================================================== */
+
+    /* ====================================================================
+       زیرفاز 1.5-الف (سند 012) — Today's Mission
+       الگوریتم قطعی چهارمرحله‌ای، بدون فراخوانی AI:
+       ۱. تسک In Progress با بالاترین Priority و نزدیک‌ترین Deadline
+       ۲. نزدیک‌ترین Lesson/Practice ناتمام (پیمایش به ترتیب created_at)
+       ۳. تسک «آماده» (نگاشت مصوب این چت: Todo یا Review) با بالاترین Priority
+       ۴. هیچ‌کدام → دعوت متنی به AI Interview (خود Interview در 1.5-ج ساخته می‌شود)
+       نکته: «Ready» در وضعیت‌های واقعی Task وجود ندارد؛ نگاشت Todo+Review
+       تصمیم ثبت‌شده کاربر در چت اجرایی این زیرفاز است.
+       ==================================================================== */
+
+    _priorityRank(p) {
+      const ranks = { Critical: 3, High: 2, Medium: 1, Low: 0 };
+      return ranks[p] !== undefined ? ranks[p] : 1;
+    },
+
+    // انتخاب قطعی تسک: اولویت بالاتر → ددلاین نزدیک‌تر (بدون ددلاین = آخر) → قدیمی‌تر
+    _pickTaskMission(statuses) {
+      const all = StorageLayer.list('tasks').data || [];
+      const pool = all.filter(t => statuses.includes(t.status));
+      if (!pool.length) return null;
+      pool.sort((a, b) => {
+        const pr = this._priorityRank(b.priority) - this._priorityRank(a.priority);
+        if (pr !== 0) return pr;
+        const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const db = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        if (da !== db) return da - db;
+        return new Date(a.created_at) - new Date(b.created_at);
+      });
+      return pool[0];
+    },
+
+    // مرحله ۲: اولین Lesson ناتمام در پیمایش Roadmap→Module→Lesson به ترتیب created_at؛
+    // اگر Lesson تکمیل ولی Practiceای ناتمام مانده، همان Practice برگردانده می‌شود.
+    _firstUnfinishedLearning() {
+      const byCreated = (a, b) => new Date(a.created_at) - new Date(b.created_at);
+      const excluded = ['Archived', 'Deleted'];
+      const roadmaps = (StorageLayer.list('roadmaps').data || []).filter(r => !excluded.includes(r.status)).sort(byCreated);
+      for (const rm of roadmaps) {
+        const mods = (StorageLayer.list('modules', { roadmap_id: rm.id }).data || []).filter(m => !excluded.includes(m.status)).sort(byCreated);
+        for (const mod of mods) {
+          const lessons = (StorageLayer.list('lessons', { module_id: mod.id }).data || []).filter(l => !excluded.includes(l.status)).sort(byCreated);
+          for (const lesson of lessons) {
+            if (lesson.status !== 'Completed') {
+              return { kind: 'lesson', entity: lesson, roadmap: rm };
+            }
+            const practices = (StorageLayer.list('practices', { lesson_id: lesson.id }).data || []).filter(p => !excluded.includes(p.status)).sort(byCreated);
+            const unfinished = practices.find(p => p.status !== 'Completed');
+            if (unfinished) {
+              return { kind: 'practice', entity: unfinished, roadmap: rm };
+            }
+          }
+        }
+      }
+      return null;
+    },
+
+    get todaysMission() {
+      // مرحله ۱
+      const inProgress = this._pickTaskMission(['In Progress']);
+      if (inProgress) {
+        const proj = StorageLayer.getById('projects', inProgress.project_id);
+        const projTitle = proj && proj.success && proj.data ? proj.data.title : '';
+        return {
+          kind: 'task', entity: inProgress,
+          typeLabel: 'تسک در حال انجام', badgeClass: 'badge-progress',
+          title: inProgress.title,
+          context: (projTitle ? 'پروژه: ' + projTitle + ' — ' : '') + 'اولویت: ' + this.priorityMeta(inProgress.priority).label + (inProgress.due_date ? ' — ددلاین: ' + this.formatDueDate(inProgress.due_date) : ''),
+        };
+      }
+      // مرحله ۲
+      const learning = this._firstUnfinishedLearning();
+      if (learning) {
+        return {
+          kind: learning.kind, entity: learning.entity,
+          typeLabel: learning.kind === 'lesson' ? 'درس ناتمام' : 'تمرین ناتمام',
+          badgeClass: 'badge-warning',
+          title: learning.entity.title,
+          context: 'مسیر یادگیری: ' + learning.roadmap.title,
+        };
+      }
+      // مرحله ۳ — «Ready» نگاشت‌شده به Todo + Review
+      const ready = this._pickTaskMission(['Todo', 'Review']);
+      if (ready) {
+        const proj = StorageLayer.getById('projects', ready.project_id);
+        const projTitle = proj && proj.success && proj.data ? proj.data.title : '';
+        return {
+          kind: 'task', entity: ready,
+          typeLabel: 'تسک آماده شروع', badgeClass: 'badge-muted',
+          title: ready.title,
+          context: (projTitle ? 'پروژه: ' + projTitle + ' — ' : '') + 'اولویت: ' + this.priorityMeta(ready.priority).label + (ready.due_date ? ' — ددلاین: ' + this.formatDueDate(ready.due_date) : ''),
+        };
+      }
+      // مرحله ۴ — دعوت متنی (در HTML مدیریت می‌شود)
+      return null;
+    },
+
+    // «ادامه از جایی که بودی» — آخرین موجودیت به‌روزشده بین Lesson / Practice / Task
+    // (طبق سند 012 فقط بر اساس updated_at؛ Archived/Deleted به‌عنوان فیلتر سلامت کنار گذاشته می‌شوند)
+    get continueTarget() {
+      const excluded = ['Archived', 'Deleted'];
+      const candidates = [];
+      (StorageLayer.list('tasks').data || []).forEach(t => { if (!excluded.includes(t.status)) candidates.push({ kind: 'task', entity: t }); });
+      (StorageLayer.list('lessons').data || []).forEach(l => { if (!excluded.includes(l.status)) candidates.push({ kind: 'lesson', entity: l }); });
+      (StorageLayer.list('practices').data || []).forEach(p => { if (!excluded.includes(p.status)) candidates.push({ kind: 'practice', entity: p }); });
+      if (!candidates.length) return null;
+      candidates.sort((a, b) => new Date(b.entity.updated_at || 0) - new Date(a.entity.updated_at || 0));
+      const top = candidates[0];
+      return { kind: top.kind, entity: top.entity, title: top.entity.title };
+    },
+
+    // ناوبری مشترک: تسک → فضای کاری پروژه (تب تسک‌ها)؛ درس/تمرین → جزئیات Roadmap مربوطه
+    _goToEntity(kind, entity) {
+      if (kind === 'task') {
+        const proj = StorageLayer.getById('projects', entity.project_id);
+        if (!proj.success || !proj.data) { this.showToast('پروژه این تسک پیدا نشد.'); return; }
+        this.currentView = 'projects';
+        this.loadProjects();
+        this.openProjectWorkspace(proj.data);
+        this.workspaceTab = 'tasks';
+        return;
+      }
+      // lesson یا practice → پیدا کردن Roadmap از زنجیره والدها
+      let lesson = entity;
+      if (kind === 'practice') {
+        const lres = StorageLayer.getById('lessons', entity.lesson_id);
+        if (!lres.success || !lres.data) { this.showToast('درسِ این تمرین پیدا نشد.'); return; }
+        lesson = lres.data;
+      }
+      const mres = StorageLayer.getById('modules', lesson.module_id);
+      if (!mres.success || !mres.data) { this.showToast('ماژول این درس پیدا نشد.'); return; }
+      const rres = StorageLayer.getById('roadmaps', mres.data.roadmap_id);
+      if (!rres.success || !rres.data) { this.showToast('مسیر یادگیری پیدا نشد.'); return; }
+      this.currentView = 'learning';
+      this.loadRoadmaps();
+      this.openRoadmapDetail(rres.data);
+    },
+
+    startMission() {
+      const m = this.todaysMission;
+      if (m) this._goToEntity(m.kind, m.entity);
+    },
+
+    goToContinueTarget() {
+      const c = this.continueTarget;
+      if (c) this._goToEntity(c.kind, c.entity);
+    },
+
+    // مقادیر واقعی ردیف فشرده KPI — بازاستفاده از Getterهای موجود Analytics (تصمیم ثبت‌شده کاربر)
+    get todayTasksCount() {
+      const today = this.todayDateString();
+      return (StorageLayer.list('tasks').data || []).filter(t =>
+        t.due_date && String(t.due_date).slice(0, 10) === today && t.status !== 'Done' && t.status !== 'Archived'
+      ).length;
+    },
+
+    kpiValue(id) {
+      if (id === 'projects') return this.activeProjectsCount;
+      if (id === 'streak') return this.learningStreak;
+      if (id === 'hours') return this.totalLoggedHours;
+      if (id === 'tasks') return this.todayTasksCount;
+      return '—';
+    },
 
     get activeProjectsCount() {
       return (StorageLayer.list('projects').data || []).filter(p => p.status === 'Active').length;
