@@ -414,6 +414,46 @@
   .kpi-strip-value{ font-family:var(--font-en); font-size:var(--text-body); font-weight:700; }
   .kpi-strip-title{ font-size:var(--text-caption); color:var(--color-text-secondary); }
 
+  /* ---- زیرفاز 1.5-د (سند 012): جذابیت بصری ---- */
+  /* دکمه‌های اقدام داخل Empty Stateهای راهنما */
+  .empty-actions{ display:flex; gap:var(--space-s); flex-wrap:wrap; justify-content:center; margin-top:var(--space-m); }
+
+  /* Streak در هدر — نمایش فقط؛ محاسبه همان learningStreak موجود Analytics */
+  .header-streak{
+    display:flex; align-items:center; gap:6px;
+    padding:6px 10px; border-radius:var(--radius-pill);
+    background:transparent; border:0; cursor:pointer;
+    color:var(--color-text-secondary); font-family:inherit;
+  }
+  .header-streak svg{ width:18px; height:18px; color:#F59E0B; }
+  .header-streak .streak-count{ font-family:var(--font-en); font-weight:700; font-size:var(--text-small); }
+  .header-streak:hover{ background:var(--color-neutral-bg); transition:background 150ms; }
+  .header-streak.zero svg{ color:var(--color-text-secondary); opacity:.55; }
+
+  /* لحظه تکمیل — انیمیشن ظهور 250ms (سقف 300ms طبق Motion System سند 007) */
+  .celebration-toast{
+    position:fixed; top:calc(var(--header-h) + var(--space-m)); left:50%;
+    z-index:120; display:flex; align-items:center; gap:var(--space-m);
+    background:var(--color-neutral-bg); border:1px solid var(--color-success);
+    border-inline-start:4px solid var(--color-success);
+    border-radius:var(--radius-m); padding:var(--space-m) var(--space-l);
+    box-shadow:var(--elevation-3);
+    animation:celebration-pop 250ms cubic-bezier(.34,1.56,.64,1) both;
+  }
+  .celebration-toast .celebration-check svg{ width:28px; height:28px; color:var(--color-success); }
+  .celebration-toast strong{ display:block; color:var(--color-success); }
+  .celebration-toast span{ font-size:var(--text-caption); color:var(--color-text-secondary); }
+  .celebration-toast.mission{ border-color:var(--color-primary); border-inline-start-color:var(--color-primary); }
+  .celebration-toast.mission .celebration-check svg{ color:var(--color-primary); }
+  .celebration-toast.mission strong{ color:var(--color-primary); }
+  @keyframes celebration-pop{
+    from{ transform:translateX(-50%) scale(.6); opacity:0; }
+    to{ transform:translateX(-50%) scale(1); opacity:1; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .celebration-toast{ animation:none; transform:translateX(-50%); }
+  }
+
   /* Triple columns */
   .triple-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-m); }
   .col-card{ display:flex; flex-direction:column; min-height:260px; }
@@ -875,6 +915,13 @@
     <button class="icon-btn" @click="showToast('اعلان جدیدی وجود ندارد.')" aria-label="اعلان‌ها" title="اعلان‌ها">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
     </button>
+    <!-- زیرفاز 1.5-د (سند 012): Streak در هدر — فقط نمایش؛ محاسبه همان learningStreak موجود Analytics -->
+    <button class="header-streak" :class="{zero: learningStreak === 0}" @click="goTo(moduleById('analytics'))"
+            :title="'استریک یادگیری: ' + learningStreak + ' روز پیاپی — کلیک برای جزئیات در تحلیل‌ها'"
+            aria-label="استریک یادگیری">
+      <span x-html="icon('flame')"></span>
+      <span class="streak-count en" x-text="learningStreak"></span>
+    </button>
     <button class="icon-btn" @click="toggleTheme()" :aria-label="theme === 'light' ? 'روشن' : 'تیره'" title="تغییر پوسته">
       <svg x-show="theme === 'light'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22"/><line x1="2" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="6.6" y2="6.6"/><line x1="17.4" y1="17.4" x2="19.1" y2="19.1"/><line x1="4.9" y1="19.1" x2="6.6" y2="17.4"/><line x1="17.4" y1="6.6" x2="19.1" y2="4.9"/></svg>
       <svg x-show="theme === 'dark'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/></svg>
@@ -1101,7 +1148,10 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('inbox')"></div>
             <strong>صندوق ورودی خالیه</strong>
-            <p>هر چیزی که هنوز نمی‌دونی قراره چی بشه رو همین بالا بنویس.</p>
+            <p>ذهنت رو خالی کن — هر ایده خامی، بدون نگرانی از دسته‌بندی.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="document.getElementById('inbox-raw-text').focus()"><span x-html="icon('notebook-pen')"></span><span>اولین ایده‌ات را بنویس</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -1182,7 +1232,11 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('target')"></div>
             <strong>هنوز هدفی ثبت نشده</strong>
-            <p>با دکمهٔ «هدف جدید» اولین هدف بلندمدتت رو بساز، بعد پروژه‌هات رو بهش وصل کن.</p>
+            <p>همه‌چیز از یک هدف شروع می‌شود — دستی بنویس یا بگذار AI پیش‌نویسش را بسازد.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateGoal()"><span x-html="icon('plus')"></span><span>اولین هدفت را بنویس</span></button>
+              <button class="btn btn-secondary" @click="openInterview()"><span x-html="icon('sparkles')"></span><span>شروع با AI</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -1252,7 +1306,10 @@
             <div class="empty-state" style="padding-block:var(--space-xxl);">
               <div class="icon-wrap" x-html="icon('folder-open')"></div>
               <strong>هنوز پروژه‌ای ثبت نشده</strong>
-              <p>با دکمهٔ «پروژه جدید» اولین پروژه‌ات رو بساز.</p>
+              <p>پروژه جایی است که هدف به کار واقعی تبدیل می‌شود.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateProject()"><span x-html="icon('folder-kanban')"></span><span>اولین پروژه‌ات را بساز</span></button>
+            </div>
             </div>
           </div>
         </template>
@@ -1433,7 +1490,10 @@
               <div class="empty-state" style="padding-block:var(--space-xxl);">
                 <div class="icon-wrap" x-html="icon('list-checks')"></div>
                 <strong>هنوز Taskی ثبت نشده</strong>
-                <p>با دکمهٔ «Task جدید» اولین کار این پروژه رو ثبت کن.</p>
+                <p>پروژه با اولین قدم کوچک جلو می‌رود.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateTask('Todo')"><span x-html="icon('list-checks')"></span><span>اولین کار را ثبت کن</span></button>
+            </div>
               </div>
             </div>
           </template>
@@ -1519,7 +1579,10 @@
               <div class="empty-state" style="padding-block:var(--space-xxl);">
                 <div class="icon-wrap" x-html="icon('library')"></div>
                 <strong>هنوز Noteای به این پروژه وصل نشده</strong>
-                <p>با دکمهٔ «Note جدید» اولین یادداشت این پروژه رو بساز.</p>
+                <p>هرچه در این پروژه یاد می‌گیری، همین‌جا ثبتش کن.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateNote(activeProjectId)"><span x-html="icon('notebook-pen')"></span><span>اولین یادداشت را بنویس</span></button>
+            </div>
               </div>
             </div>
           </template>
@@ -1584,7 +1647,10 @@
               <div class="empty-state" style="padding-block:var(--space-xxl);">
                 <div class="icon-wrap" x-html="icon('sparkles')"></div>
                 <strong>هنوز Promptی به این پروژه وصل نشده</strong>
-                <p>با دکمهٔ «Prompt جدید» اولین Prompt این پروژه رو بساز.</p>
+                <p>پرامپت‌های خوبِ این پروژه را نگه دار تا دوباره استفاده‌شان کنی.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreatePrompt(activeProjectId)"><span x-html="icon('sparkles')"></span><span>اولین پرامپت را ذخیره کن</span></button>
+            </div>
               </div>
             </div>
           </template>
@@ -1643,7 +1709,10 @@
               <div class="empty-state" style="padding-block:var(--space-xxl);">
                 <div class="icon-wrap" x-html="icon('book-open')"></div>
                 <strong>هنوز Resourceای به این پروژه وصل نشده</strong>
-                <p>با دکمهٔ «Resource جدید» اولین منبع این پروژه رو ثبت کن.</p>
+                <p>لینک‌ها و منابعی که برای این پروژه لازم داری، یک‌جا جمع شوند.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateResource(activeProjectId)"><span x-html="icon('book-open')"></span><span>اولین منبع را ثبت کن</span></button>
+            </div>
               </div>
             </div>
           </template>
@@ -1716,7 +1785,10 @@
               <div class="empty-state" style="padding-block:var(--space-xxl);">
                 <div class="icon-wrap" x-html="icon('bot')"></div>
                 <strong>هنوز Chatای به این پروژه وصل نشده</strong>
-                <p>با دکمهٔ «Chat جدید» اولین گفتگوی این پروژه رو ثبت کن.</p>
+                <p>گفتگوهای مفید با AI درباره این پروژه را آرشیو کن.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateChat(activeProjectId)"><span x-html="icon('bot')"></span><span>اولین گفتگو را ثبت کن</span></button>
+            </div>
               </div>
             </div>
           </template>
@@ -1807,7 +1879,10 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('library')"></div>
             <strong x-text="notes.length === 0 ? 'هنوز Noteای ثبت نشده' : 'در این فیلتر چیزی نیست'"></strong>
-            <p x-text="notes.length === 0 ? 'با دکمهٔ «Note جدید» اولین یادداشتت رو بساز.' : 'فیلتر «همه» رو بزن تا بقیهٔ Noteها رو ببینی.'"></p>
+            <p x-text="notes.length === 0 ? 'دانش پراکنده نمی‌ماند — اولین یادداشتت را همین حالا بنویس.' : 'فیلتر «همه» رو بزن تا بقیهٔ Noteها رو ببینی.'"></p>
+            <div class="empty-actions" x-show="notes.length === 0">
+              <button class="btn btn-primary" @click="openCreateNote()"><span x-html="icon('plus')"></span><span>اولین یادداشت را بنویس</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -1878,7 +1953,10 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('sparkles')"></div>
             <strong>هنوز Promptی ثبت نشده</strong>
-            <p>با دکمهٔ «Prompt جدید» اولین Prompt خودت رو بساز.</p>
+            <p>کتابخانه شخصی پرامپت‌هایت را از همین‌جا شروع کن.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreatePrompt()"><span x-html="icon('sparkles')"></span><span>اولین پرامپت را بساز</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -1943,7 +2021,10 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('book-open')"></div>
             <strong>هنوز Resourceای ثبت نشده</strong>
-            <p>با دکمهٔ «Resource جدید» اولین منبعت رو ثبت کن.</p>
+            <p>هر دوره، کتاب یا لینکی که به کارت می‌آید، اینجا ماندگار می‌شود.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateResource()"><span x-html="icon('book-open')"></span><span>اولین منبع را ثبت کن</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -2030,7 +2111,10 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('notebook-pen')"></div>
             <strong>هنوز ثبتی وجود نداره</strong>
-            <p>با دکمهٔ «ثبت امروز» اولین ثبت ژورنالت رو بساز.</p>
+            <p>نیمه دوم ستاره قطبی: هر شب بدانی چه یاد گرفتی.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openTodayOrCreate()"><span x-html="icon('notebook-pen')"></span><span>امروز چی یاد گرفتی؟</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -2113,7 +2197,10 @@
             <div class="empty-state" style="padding-block:var(--space-xxl);">
               <div class="icon-wrap" x-html="icon('graduation-cap')"></div>
               <strong>هنوز Roadmapای ثبت نشده</strong>
-              <p>با دکمهٔ «Roadmap جدید» اولین مسیر یادگیری‌ات رو بساز.</p>
+              <p>مسیر یادگیری‌ات را قدم‌به‌قدم طراحی کن.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateRoadmap()"><span x-html="icon('graduation-cap')"></span><span>اولین مسیرت را بساز</span></button>
+            </div>
             </div>
           </div>
         </template>
@@ -2223,7 +2310,10 @@
             <div class="empty-state" style="padding-block:var(--space-xl);">
               <div class="icon-wrap" x-html="icon('folder-kanban')"></div>
               <strong>هنوز Moduleای ثبت نشده</strong>
-              <p>با دکمهٔ «Module جدید» اولین بخش این Roadmap رو بساز.</p>
+              <p>این مسیر را به بخش‌های کوچک‌تر تقسیم کن.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateModule(activeRoadmapId)"><span x-html="icon('plus')"></span><span>اولین بخش را بساز</span></button>
+            </div>
             </div>
           </div>
         </template>
@@ -2342,7 +2432,10 @@
           <div class="empty-state" style="padding-block:var(--space-xxl);">
             <div class="icon-wrap" x-html="icon('bot')"></div>
             <strong>هنوز Chatای ثبت نشده</strong>
-            <p>با دکمهٔ «Chat جدید» اولین گفتگوت رو ثبت کن.</p>
+            <p>گفتگوهای ارزشمندت با AI را اینجا آرشیو کن تا گم نشوند.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateChat()"><span x-html="icon('bot')"></span><span>اولین گفتگو را ثبت کن</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -2489,6 +2582,9 @@
             <div class="icon-wrap" x-html="icon('briefcase')"></div>
             <strong>هنوز پروژهٔ تکمیل‌شده‌ای وجود ندارد</strong>
             <p>وقتی وضعیت یک پروژه از ماژول «پروژه‌ها» به «تکمیل‌شده» تغییر کند، اینجا نمایش داده می‌شود.</p>
+            <div class="empty-actions">
+              <button class="btn btn-secondary" @click="goTo(moduleById('projects'))"><span x-html="icon('folder-kanban')"></span><span>برو سراغ پروژه‌ها</span></button>
+            </div>
           </div>
         </div>
       </template>
@@ -2678,6 +2774,18 @@
 <!-- =====================================================================
      TOAST
      ===================================================================== -->
+<!-- زیرفاز 1.5-د (سند 012): لحظه تکمیل — الهام Duolingo؛ انیمیشن 250ms (سقف 300ms سند 007) -->
+<!-- با template x-if ساخته شده (نه x-show) تا عنصر هر بار از نو ساخته شود و انیمیشن CSS دوباره اجرا شود -->
+<template x-if="celebration.show">
+  <div class="celebration-toast" :class="{mission: celebration.mission}" role="status">
+    <div class="celebration-check" x-html="icon('check-circle-2')"></div>
+    <div>
+      <strong x-text="celebration.mission ? 'مأموریت امروز کامل شد! 🎉' : 'انجام شد!'"></strong>
+      <span x-text="celebration.title"></span>
+    </div>
+  </div>
+</template>
+
 <div class="toast" x-show="toast" x-cloak x-transition>
   <template x-if="toast">
     <div style="display:flex; align-items:center; gap:var(--space-s);">
@@ -5570,6 +5678,19 @@ function app() {
       this._toastTimer = setTimeout(() => { this.toast = null; }, 4000);
     },
 
+    // زیرفاز 1.5-د (سند 012): لحظه تکمیل — بازخورد بصری کوتاه هنگام Done/Completed شدن.
+    // انیمیشن ظهور 250ms است (سقف 300ms طبق Motion System سند 007)؛ پیام ~۱ ثانیه می‌ماند تا خوانا باشد.
+    celebration: { show: false, title: '', mission: false },
+    celebrate(title, isMission) {
+      clearTimeout(this._celebrationTimer);
+      this.celebration = { show: false, title: '', mission: false };
+      // در فریم بعدی نمایش بده تا template x-if از نو ساخته شود و انیمیشن دوباره اجرا شود
+      this.$nextTick(() => {
+        this.celebration = { show: true, title: title || '', mission: !!isMission };
+        this._celebrationTimer = setTimeout(() => { this.celebration.show = false; }, 1100);
+      });
+    },
+
     quickAdd(item) {
       this.quickAddOpen = false;
       if (item.id === 'project') {
@@ -6166,6 +6287,11 @@ function app() {
         related_prompt: null,  // ماژول Prompt Hub هنوز ساخته نشده — طبق 011
       };
 
+      // زیرفاز 1.5-د: ثبت وضعیت قبلی برای تشخیص «لحظه تکمیل» — فقط خواندن، بدون تغییر منطق داده
+      const _prev = this.taskModalMode === 'edit' ? StorageLayer.getById('tasks', this.editingTaskId) : null;
+      const _prevStatus = _prev && _prev.success && _prev.data ? _prev.data.status : null;
+      const _wasMission = !!(this.todaysMission && this.todaysMission.kind === 'task' && this.taskModalMode === 'edit' && this.todaysMission.entity.id === this.editingTaskId);
+
       const res = this.taskModalMode === 'create'
         ? StorageLayer.create('tasks', payload)
         : StorageLayer.update('tasks', this.editingTaskId, payload);
@@ -6175,6 +6301,7 @@ function app() {
       this.taskModalOpen = false;
       this.loadTasks();
       this.showToast(this.taskModalMode === 'create' ? 'Task ایجاد شد.' : 'Task به‌روزرسانی شد.');
+      if (payload.status === 'Done' && _prevStatus !== 'Done') this.celebrate(payload.title, _wasMission);
     },
 
     askDeleteTask(task) {
@@ -7257,12 +7384,17 @@ function app() {
         content: this.lessonForm.content.trim(), resource_ids: this.lessonForm.resource_ids,
         module_id: this.lessonParentModuleId,
       };
+      // زیرفاز 1.5-د: ثبت وضعیت قبلی برای تشخیص «لحظه تکمیل» — فقط خواندن، بدون تغییر منطق داده
+      const _prev = this.lessonModalMode === 'edit' ? StorageLayer.getById('lessons', this.editingLessonId) : null;
+      const _prevStatus = _prev && _prev.success && _prev.data ? _prev.data.status : null;
+      const _wasMission = !!(this.todaysMission && this.todaysMission.kind === 'lesson' && this.lessonModalMode === 'edit' && this.todaysMission.entity.id === this.editingLessonId);
       const res = this.lessonModalMode === 'create'
         ? StorageLayer.create('lessons', payload)
         : StorageLayer.update('lessons', this.editingLessonId, payload);
       if (!res.success) { this.lessonFormError = res.error.message; return; }
       this.lessonModalOpen = false;
       this.showToast(this.lessonModalMode === 'create' ? 'Lesson ایجاد شد.' : 'Lesson به‌روزرسانی شد.');
+      if (payload.status === 'Completed' && _prevStatus !== 'Completed') this.celebrate(payload.title, _wasMission);
     },
     askDeleteLesson(lesson) {
       this.deleteTarget = { type: 'lesson', id: lesson.id, title: lesson.title };
@@ -7340,12 +7472,17 @@ function app() {
         project_id: this.practiceForm.project_id || null,
         lesson_id: this.practiceParentLessonId,
       };
+      // زیرفاز 1.5-د: ثبت وضعیت قبلی برای تشخیص «لحظه تکمیل» — فقط خواندن، بدون تغییر منطق داده
+      const _prev = this.practiceModalMode === 'edit' ? StorageLayer.getById('practices', this.editingPracticeId) : null;
+      const _prevStatus = _prev && _prev.success && _prev.data ? _prev.data.status : null;
+      const _wasMission = !!(this.todaysMission && this.todaysMission.kind === 'practice' && this.practiceModalMode === 'edit' && this.todaysMission.entity.id === this.editingPracticeId);
       const res = this.practiceModalMode === 'create'
         ? StorageLayer.create('practices', payload)
         : StorageLayer.update('practices', this.editingPracticeId, payload);
       if (!res.success) { this.practiceFormError = res.error.message; return; }
       this.practiceModalOpen = false;
       this.showToast(this.practiceModalMode === 'create' ? 'Practice ایجاد شد.' : 'Practice به‌روزرسانی شد.');
+      if (payload.status === 'Completed' && _prevStatus !== 'Completed') this.celebrate(payload.title, _wasMission);
     },
     askDeletePractice(practice) {
       this.deleteTarget = { type: 'practice', id: practice.id, title: practice.title };
