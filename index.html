@@ -5680,6 +5680,11 @@ function app() {
 
     // زیرفاز 1.5-د (سند 012): لحظه تکمیل — بازخورد بصری کوتاه هنگام Done/Completed شدن.
     // انیمیشن ظهور 250ms است (سقف 300ms طبق Motion System سند 007)؛ پیام ~۱ ثانیه می‌ماند تا خوانا باشد.
+    // اصلاح باگ واکنش‌پذیری داشبورد (کشف‌شده در تست 1.5-د):
+    // StorageLayer خارج از دید Alpine است؛ این شمارنده «سیگنال بیداری» محاسبه‌های داشبورد است.
+    _dashRefresh: 0,
+    bumpDashRefresh() { this._dashRefresh++; },
+
     celebration: { show: false, title: '', mission: false },
     celebrate(title, isMission) {
       clearTimeout(this._celebrationTimer);
@@ -6185,6 +6190,7 @@ function app() {
       this.loadGoals();
       this.loadProjects();
       this.showToast('هدف، پروژه و ' + createdTaskIds.length + ' تسک ساخته شد.');
+      this.bumpDashRefresh();
       this.currentView = 'goals';
     },
 
@@ -6301,6 +6307,7 @@ function app() {
       this.taskModalOpen = false;
       this.loadTasks();
       this.showToast(this.taskModalMode === 'create' ? 'Task ایجاد شد.' : 'Task به‌روزرسانی شد.');
+      this.bumpDashRefresh();
       if (payload.status === 'Done' && _prevStatus !== 'Done') this.celebrate(payload.title, _wasMission);
     },
 
@@ -6311,6 +6318,7 @@ function app() {
 
     confirmDelete() {
       if (!this.deleteTarget) return;
+      this.bumpDashRefresh(); // هر حذفی می‌تواند مأموریت/KPI را تغییر دهد
 
       if (this.deleteTarget.type === 'project') {
         StorageLayer.remove('projects', this.deleteTarget.id); // Soft Delete پیش‌فرض — طبق 005
@@ -7121,6 +7129,7 @@ function app() {
       this.journalModalOpen = false;
       this.loadJournalEntries();
       this.showToast(this.journalModalMode === 'create' ? 'ثبت ژورنال ایجاد شد.' : 'ثبت ژورنال به‌روزرسانی شد.');
+      this.bumpDashRefresh();
     },
 
     askDeleteJournalEntry(entry) {
@@ -7394,6 +7403,7 @@ function app() {
       if (!res.success) { this.lessonFormError = res.error.message; return; }
       this.lessonModalOpen = false;
       this.showToast(this.lessonModalMode === 'create' ? 'Lesson ایجاد شد.' : 'Lesson به‌روزرسانی شد.');
+      this.bumpDashRefresh();
       if (payload.status === 'Completed' && _prevStatus !== 'Completed') this.celebrate(payload.title, _wasMission);
     },
     askDeleteLesson(lesson) {
@@ -7482,6 +7492,7 @@ function app() {
       if (!res.success) { this.practiceFormError = res.error.message; return; }
       this.practiceModalOpen = false;
       this.showToast(this.practiceModalMode === 'create' ? 'Practice ایجاد شد.' : 'Practice به‌روزرسانی شد.');
+      this.bumpDashRefresh();
       if (payload.status === 'Completed' && _prevStatus !== 'Completed') this.celebrate(payload.title, _wasMission);
     },
     askDeletePractice(practice) {
@@ -7754,6 +7765,7 @@ function app() {
     },
 
     get todaysMission() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
       // مرحله ۱
       const inProgress = this._pickTaskMission(['In Progress']);
       if (inProgress) {
@@ -7796,6 +7808,7 @@ function app() {
     // «ادامه از جایی که بودی» — آخرین موجودیت به‌روزشده بین Lesson / Practice / Task
     // (طبق سند 012 فقط بر اساس updated_at؛ Archived/Deleted به‌عنوان فیلتر سلامت کنار گذاشته می‌شوند)
     get continueTarget() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
       const excluded = ['Archived', 'Deleted'];
       const candidates = [];
       (StorageLayer.list('tasks').data || []).forEach(t => { if (!excluded.includes(t.status)) candidates.push({ kind: 'task', entity: t }); });
@@ -7846,6 +7859,7 @@ function app() {
 
     // مقادیر واقعی ردیف فشرده KPI — بازاستفاده از Getterهای موجود Analytics (تصمیم ثبت‌شده کاربر)
     get todayTasksCount() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
       const today = this.todayDateString();
       return (StorageLayer.list('tasks').data || []).filter(t =>
         t.due_date && String(t.due_date).slice(0, 10) === today && t.status !== 'Done' && t.status !== 'Archived'
@@ -7853,6 +7867,7 @@ function app() {
     },
 
     kpiValue(id) {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
       if (id === 'projects') return this.activeProjectsCount;
       if (id === 'streak') return this.learningStreak;
       if (id === 'hours') return this.totalLoggedHours;
@@ -7876,6 +7891,7 @@ function app() {
 
     // مجموعه رشته‌های 'YYYY-MM-DD' برای روزهایی که طبق معیار بالا «فعال» بوده‌اند
     get activeDaysSet() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
       const days = new Set();
       const dayOfIso = (iso) => (iso ? iso.slice(0, 10) : null);
 
@@ -7898,6 +7914,7 @@ function app() {
     // استریک فعلی — طبق الگوی رایج Duolingo: اگر امروز هنوز فعالیتی ثبت نشده،
     // استریک بلافاصله صفر نمی‌شود؛ از دیروز شمارش معکوس آغاز می‌شود.
     get learningStreak() {
+      this.currentView; this._dashRefresh; // سیگنال‌های بیداری Alpine — بدون اثر بر منطق
       const activeDays = this.activeDaysSet;
       const toISODate = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
