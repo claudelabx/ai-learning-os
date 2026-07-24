@@ -226,11 +226,25 @@
   .app-sidebar.collapsed .nav-item{ justify-content:center; padding:10px; }
 
   .sidebar-section-label{
-    font-size:11px; color:var(--color-text-secondary); font-weight:700;
+    font-size:var(--text-caption); color:var(--color-text-secondary); font-weight:700;
     padding:var(--space-m) var(--space-m) var(--space-xs);
     text-transform:uppercase; letter-spacing:.04em;
   }
   .app-sidebar.collapsed .sidebar-section-label{ display:none; }
+
+  /* ---- زیرفاز 1.5-ب (سند 002 نسخه 3.2): گروه‌بندی سایدبار ---- */
+  .nav-group{ display:flex; flex-direction:column; gap:2px; }
+  .nav-group-divider{
+    display:none; height:1px; background:var(--color-neutral-border);
+    margin:var(--space-s) var(--space-s);
+  }
+  /* در حالت Collapsed سرتیترها مخفی و به‌جایشان فقط جداکننده ظریف (قاعده سند 002) */
+  .app-sidebar.collapsed .nav-group-divider{ display:block; }
+  /* گروه اول («امروز») بالای سایدبار است — جداکننده بالایش نمایش داده نمی‌شود */
+  .app-sidebar.collapsed .nav-group:first-child .nav-group-divider{ display:none; }
+  /* Settings جدا در پایین: جداکننده‌اش در هر دو حالت دیده می‌شود و خودش به ته ناوبری می‌چسبد */
+  .nav-group-settings{ margin-top:auto; }
+  .nav-group-divider.always{ display:block; }
 
   .sidebar-footer{
     padding:var(--space-m); border-top:1px solid var(--color-neutral-border);
@@ -878,18 +892,42 @@
 
 <aside class="app-sidebar" :class="{collapsed: sidebarCollapsed, 'mobile-open': mobileSidebarOpen}">
   <nav class="sidebar-nav">
-    <template x-for="mod in modules" :key="mod.id">
-      <button
-        class="nav-item"
-        :class="{active: currentView === mod.id}"
-        :disabled="mod.disabled"
-        :title="mod.disabled ? mod.label + ' — تا ' + mod.phase + ' غیرفعال است' : mod.label"
-        @click="goTo(mod)">
-        <span x-html="icon(mod.icon)"></span>
-        <span class="label" x-text="mod.label"></span>
-        <span class="soon-tag en" x-show="mod.phase" x-text="mod.phase"></span>
-      </button>
+    <!-- زیرفاز 1.5-ب (سند 002 نسخه 3.2): چهار گروه معنایی — فقط لایه ارائه، بدون تغییر شناسه/مسیریابی -->
+    <template x-for="group in navGroups" :key="group.id">
+      <div class="nav-group">
+        <div class="sidebar-section-label" x-text="group.label"></div>
+        <div class="nav-group-divider" aria-hidden="true"></div>
+        <template x-for="mod in group.moduleIds.map(id => moduleById(id)).filter(Boolean)" :key="mod.id">
+          <button
+            class="nav-item"
+            :class="{active: currentView === mod.id}"
+            :disabled="mod.disabled"
+            :title="mod.disabled ? mod.label + ' — تا ' + mod.phase + ' غیرفعال است' : mod.label"
+            @click="goTo(mod)">
+            <span x-html="icon(mod.icon)"></span>
+            <span class="label" x-text="mod.label"></span>
+            <span class="soon-tag en" x-show="mod.phase" x-text="mod.phase"></span>
+          </button>
+        </template>
+      </div>
     </template>
+
+    <!-- Settings — جدا، پایین سایدبار (سند 002): با جداکننده و بدون سرتیتر گروه -->
+    <div class="nav-group nav-group-settings">
+      <div class="nav-group-divider always" aria-hidden="true"></div>
+      <template x-for="mod in [moduleById('settings')].filter(Boolean)" :key="mod.id">
+        <button
+          class="nav-item"
+          :class="{active: currentView === mod.id}"
+          :disabled="mod.disabled"
+          :title="mod.disabled ? mod.label + ' — تا ' + mod.phase + ' غیرفعال است' : mod.label"
+          @click="goTo(mod)">
+          <span x-html="icon(mod.icon)"></span>
+          <span class="label" x-text="mod.label"></span>
+          <span class="soon-tag en" x-show="mod.phase" x-text="mod.phase"></span>
+        </button>
+      </template>
+    </div>
   </nav>
 
   <div class="sidebar-footer">
@@ -4871,6 +4909,19 @@ function app() {
       { id: 'analytics',  label: 'تحلیل‌ها',           icon: 'bar-chart-3',    disabled: false, phase: '' },
       { id: 'settings',   label: 'تنظیمات',            icon: 'settings',        disabled: false, phase: '' },
     ],
+
+    // زیرفاز 1.5-ب (سند 002 نسخه 3.2): گروه‌بندی صرفاً بصری سایدبار.
+    // فقط «ارائه» است: به شناسه‌های همان آرایه modules ارجاع می‌دهد؛
+    // هیچ تغییری در مسیریابی، goTo یا Storage ایجاد نمی‌کند.
+    // ترتیب ثابت و «امروز» همیشه اول — طبق قواعد گروه‌بندی سند 002.
+    navGroups: [
+      { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'inbox', 'journal'] },
+      { id: 'path',      label: 'مسیر',   moduleIds: ['goals', 'learning', 'projects'] },
+      { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge', 'prompt-hub', 'ai-chats', 'resources'] },
+      { id: 'output',    label: 'خروجی',  moduleIds: ['portfolio', 'analytics'] },
+    ],
+
+    moduleById(id) { return this.modules.find(m => m.id === id); },
 
     kpis: [
       { id: 'projects', title: 'پروژه‌های فعال', icon: 'folder-open', desc: 'با شروع فاز Prototype نمایش داده می‌شود.' },
