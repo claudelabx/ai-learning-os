@@ -1135,7 +1135,7 @@
         <div class="form-group">
           <label class="form-label" for="inbox-raw-text">متن خام</label>
           <textarea id="inbox-raw-text" class="form-input" rows="3" placeholder="مثلاً: یه ایده برای یه پروژه جدید، یا یادداشتی که بعداً می‌خوام روش کار کنم..." x-model="inboxForm.raw_text"></textarea>
-          <p class="form-helper">هنوز هیچ پیشنهاد هوشمندی وجود نداره — فقط ذخیره می‌شه تا بعداً بهش برگردی. (این ویژگی در گام بعدی اضافه می‌شه.)</p>
+          <p class="form-helper">بعد از ثبت، می‌تونی از AI بخوای پیشنهاد بده این متن تبدیل به پروژه بشه، تسک یا یادداشت — تصمیم نهایی همیشه با خودته.</p>
         </div>
         <button class="btn btn-primary" @click="submitInboxItem()" :disabled="!inboxForm.raw_text.trim()">
           <span x-html="icon('plus')"></span>
@@ -5175,9 +5175,10 @@ function app() {
       { id: 'zero',       label: 'Project Zero' },
       { id: 'prototype',  label: 'Prototype' },
       { id: 'v1',         label: 'Version 1' },
+      { id: 'v15',        label: 'Version 1.5' },
       { id: 'public',     label: 'Public Release' },
     ],
-    currentPhaseIndex: 2, // اکنون در فاز Version 1 هستیم — طبق 011 (Analytics/Portfolio تکمیل، مهاجرت Supabase در حال انجام)
+    currentPhaseIndex: 3, // اکنون در فاز Version 1.5 (Daily Companion) هستیم — طبق سند 011 نسخه 2.3 (زیرفازهای 1.5 تکمیل؛ Public Release شروع‌نشده)
 
     quickAddTypes: [
       { id: 'task',     label: 'تسک',            icon: 'list-checks' },
@@ -5487,8 +5488,9 @@ function app() {
       const texts = {
         0: 'این پنل هنوز خالی است — طبق نقشه راه (سند 011)، محتوای واقعی هر ماژول در فاز Prototype ساخته می‌شود. آنچه الان می‌بینی، اسکلت Layout و لایه ذخیره‌سازی فاز Project Zero است.',
         1: 'همهٔ ماژول‌های فاز Prototype (طبق سند 002) برای استفادهٔ روزانه آماده‌اند؛ داده روی LocalStorage ذخیره می‌شود.',
-        2: 'Analytics و Portfolio (طبق سند 011) تکمیل شده‌اند؛ مهاجرت داده از LocalStorage به Supabase طبق فاز فنی ۴-ب در حال انجام است.',
-        3: 'نسخهٔ عمومی و چندکاربره — با Authentication و RLS پویا طبق سند 009.',
+        2: 'فاز Version 1 (طبق سند 011) تکمیل شده است: داده روی Supabase، Analytics/Portfolio فعال و اولین اتصال واقعی AI برقرار است.',
+        3: 'فاز Version 1.5 — Daily Companion (طبق سند 012): داشبورد Today\u2019s Mission، ناوبری گروه‌بندی‌شده و AI Interview فعال‌اند؛ گام بعدی طبق سند 011، فاز عمومی است.',
+        4: 'نسخهٔ عمومی و چندکاربره — با Authentication و RLS پویا طبق سند 009.',
       };
       return texts[this.currentPhaseIndex] || texts[0];
     },
