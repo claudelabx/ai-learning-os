@@ -985,6 +985,63 @@
 
   </section>
 
+  <!-- ---------- INBOX ---------- -->
+  <!-- گام ۱ زیرفاز ۴-ج (سند 011): فقط فرم ثبت متن خام + فهرست، بدون AI هنوز -->
+  <section class="view" x-show="currentView === 'inbox'" x-cloak>
+    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
+      <div class="module-toolbar">
+        <div>
+          <h1>صندوق ورودی</h1>
+          <p class="subtitle">هر ایده خامی رو همین‌جا بنویس — بعداً تصمیم می‌گیری تبدیلش کنی به پروژه، تسک یا یادداشت (سند 002).</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="form-group">
+          <label class="form-label" for="inbox-raw-text">متن خام</label>
+          <textarea id="inbox-raw-text" class="form-input" rows="3" placeholder="مثلاً: یه ایده برای یه پروژه جدید، یا یادداشتی که بعداً می‌خوام روش کار کنم..." x-model="inboxForm.raw_text"></textarea>
+          <p class="form-helper">هنوز هیچ پیشنهاد هوشمندی وجود نداره — فقط ذخیره می‌شه تا بعداً بهش برگردی. (این ویژگی در گام بعدی اضافه می‌شه.)</p>
+        </div>
+        <button class="btn btn-primary" @click="submitInboxItem()" :disabled="!inboxForm.raw_text.trim()">
+          <span x-html="icon('plus')"></span>
+          <span>ثبت در صندوق ورودی</span>
+        </button>
+      </div>
+
+      <template x-if="inboxItems.length === 0">
+        <div class="card">
+          <div class="empty-state" style="padding-block:var(--space-xxl);">
+            <div class="icon-wrap" x-html="icon('inbox')"></div>
+            <strong>صندوق ورودی خالیه</strong>
+            <p>هر چیزی که هنوز نمی‌دونی قراره چی بشه رو همین بالا بنویس.</p>
+          </div>
+        </div>
+      </template>
+
+      <div style="display:flex; flex-direction:column; gap:var(--space-s);" x-show="inboxItems.length > 0">
+        <template x-for="item in inboxItems" :key="item.id">
+          <div class="card" style="display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-m);">
+            <div style="min-width:0;">
+              <p x-text="inboxDisplayLabel(item)" style="margin:0;"></p>
+              <p class="form-helper en" x-text="formatDueDate(item.created_at)" style="margin-top:var(--space-xs);"></p>
+            </div>
+            <div style="display:flex; align-items:center; gap:var(--space-s); flex-shrink:0;">
+              <span class="badge" :class="inboxStatusMeta(item.status).badge">
+                <span x-text="inboxStatusMeta(item.status).label"></span>
+              </span>
+              <button class="mini-icon-btn" x-show="item.status !== 'Dismissed'" @click="dismissInboxItem(item)" title="رد کن" aria-label="رد کن">
+                <span x-html="icon('x')"></span>
+              </button>
+              <button class="mini-icon-btn" x-show="item.status === 'Dismissed'" @click="restoreInboxItem(item)" title="بازگردانی" aria-label="بازگردانی">
+                <span x-html="icon('refresh-cw')"></span>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+
   <!-- ---------- PROJECTS ---------- -->
   <!-- ---------- GOALS ---------- -->
   <section class="view" x-show="currentView === 'goals'" x-cloak>
@@ -2466,7 +2523,7 @@
   </section>
 
   <!-- ---------- سایر ماژول‌ها: Placeholder ---------- -->
-  <template x-for="mod in modules.filter(m => m.id !== 'dashboard' && m.id !== 'projects' && m.id !== 'knowledge' && m.id !== 'prompt-hub' && m.id !== 'resources' && m.id !== 'journal' && m.id !== 'learning' && m.id !== 'ai-chats' && m.id !== 'analytics' && m.id !== 'portfolio' && m.id !== 'settings')" :key="'view-' + mod.id">
+  <template x-for="mod in modules.filter(m => m.id !== 'dashboard' && m.id !== 'inbox' && m.id !== 'goals' && m.id !== 'projects' && m.id !== 'knowledge' && m.id !== 'prompt-hub' && m.id !== 'resources' && m.id !== 'journal' && m.id !== 'learning' && m.id !== 'ai-chats' && m.id !== 'analytics' && m.id !== 'portfolio' && m.id !== 'settings')" :key="'view-' + mod.id">
     <section class="view" x-show="currentView === mod.id" x-cloak>
       <div class="module-placeholder">
         <div class="icon-wrap" x-html="icon(mod.icon)"></div>
@@ -3912,12 +3969,13 @@ const StorageLayer = (() => {
   const ALL_COLLECTIONS = [
     'projects', 'roadmaps', 'modules', 'lessons', 'tasks', 'practices',
     'time_logs', 'chats', 'notes', 'prompts', 'resources', 'journal', 'goals',
+    'inbox_items',
   ];
   const ENTITY_TYPE_BY_COLLECTION = {
     projects: 'project', tasks: 'task', time_logs: 'time_log', roadmaps: 'roadmap',
     modules: 'module', lessons: 'lesson', practices: 'practice', notes: 'note',
     prompts: 'prompt', chats: 'chat', resources: 'resource', journal: 'journal',
-    goals: 'goal',
+    goals: 'goal', inbox_items: 'inbox_item',
   };
 
   function ok(data) {
@@ -4149,11 +4207,23 @@ const StorageLayer = (() => {
     /** ایجاد رکورد جدید — همگام روی Cache، پس‌زمینه روی Supabase */
     create(collection, payload) {
       if (!collection) return fail('نام Collection الزامی است.', 'INVALID_COLLECTION');
-      if (!payload || !String(payload.title || '').trim()) {
+      // استثنای InboxItem — طبق سند 005: این Entity فیلدهای پایه مشترک (از جمله title)
+      // را قرض نمی‌گیرد؛ تنها فیلد اجباری‌اش raw_text است. بقیه Collectionها بدون تغییر.
+      if (collection === 'inbox_items') {
+        if (!payload || !String(payload.raw_text || '').trim()) {
+          return fail('فیلد «raw_text» برای InboxItem الزامی است.', 'VALIDATION_RAW_TEXT_REQUIRED');
+        }
+      } else if (!payload || !String(payload.title || '').trim()) {
         return fail('فیلد «title» برای هر Entity الزامی است.', 'VALIDATION_TITLE_REQUIRED');
       }
       const records = readCollection(collection);
-      const record = withBaseFields(payload);
+      // InboxItem رکورد جداگانه‌ای می‌گیره (بدون withBaseFields) چون طبق سند 005
+      // فیلدهای پایه مشترک (title/description/version/tags/priority/visibility)
+      // را ندارد؛ اگر اینجا هم withBaseFields صدا زده می‌شد، آپلود به Supabase با
+      // خطای «ستون وجود ندارد» شکست می‌خورد (جدول inbox_items اصلاً این ستون‌ها را ندارد).
+      const record = (collection === 'inbox_items')
+        ? { id: uuid(), owner_id: OWNER_ID, status: 'Pending', created_at: nowISO(), updated_at: nowISO(), ...payload }
+        : withBaseFields(payload);
       records.push(record);
       writeCollectionLocal(collection, records);
       scheduleSync('create', collection, record.id, record);
@@ -4655,6 +4725,7 @@ function app() {
     // فهرست نهایی ماژول‌ها — طبق 002-Information-Architecture
     modules: [
       { id: 'dashboard',  label: 'داشبورد',          icon: 'layout-dashboard', disabled: false, phase: '' },
+      { id: 'inbox',      label: 'صندوق ورودی',       icon: 'inbox',            disabled: false, phase: '' },
       { id: 'goals',      label: 'اهداف',              icon: 'target',           disabled: false, phase: '' },
       { id: 'learning',   label: 'یادگیری',           icon: 'graduation-cap',   disabled: false, phase: '' },
       { id: 'projects',   label: 'پروژه‌ها',          icon: 'folder-kanban',    disabled: false, phase: '' },
@@ -4712,6 +4783,13 @@ function app() {
     tagInput: '',
 
     // ====================================================================
+    // INBOX MODULE — state (زیرفاز ۴-ج، گام ۱ · سند 011 و 005)
+    // InboxItem عمداً فیلدهای پایه مشترک (title/priority/tags) رو قرض نمی‌گیره؛
+    // تنها فیلد اجباری‌اش raw_text است. هنوز بدون AI — فقط ثبت و رد/بازگردانی.
+    // ====================================================================
+    inboxItems: [],
+    inboxForm: { raw_text: '' },
+
     // GOALS MODULE — state (فاز فنی ۶ · Goal Entity طبق بند ۹۱ سند چشم‌انداز)
     // Goal بالاترین سطح برنامه‌ریزیه؛ به‌عنوان لایه‌ی اضافه روی Project پیاده
     // شده (goal_id روی جدول projects)، نه بازنویسی مدل موجود.
@@ -5134,6 +5212,9 @@ function app() {
       }
       this.currentView = mod.id;
       this.mobileSidebarOpen = false;
+      if (mod.id === 'inbox') {
+        this.loadInboxItems();
+      }
       if (mod.id === 'projects') {
         this.projectView = 'list';
         this.activeProjectId = null;
@@ -5336,6 +5417,57 @@ function app() {
     askDeleteProject(project) {
       this.deleteTarget = { type: 'project', id: project.id, title: project.title };
       this.confirmModalOpen = true;
+    },
+
+    // ==================================================================
+    // INBOX MODULE — Data access (زیرفاز ۴-ج، گام ۱ · سند 011 و 005)
+    // بدون AI هنوز — فقط ثبت راوتکست و رد/بازگردانی. هیچ Modal‌ای لازم نیست،
+    // فرم مستقیم توی صفحه است (سند 002: Inbox باید همیشه بدون اصطکاک قابل نوشتن باشد).
+    // ==================================================================
+    loadInboxItems() {
+      const res = StorageLayer.list('inbox_items');
+      this.inboxItems = res.success
+        ? [...res.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        : [];
+    },
+
+    submitInboxItem() {
+      const rawText = this.inboxForm.raw_text.trim();
+      if (!rawText) return;
+      const res = StorageLayer.create('inbox_items', { raw_text: rawText, status: 'Pending' });
+      if (!res.success) {
+        this.showToast(res.error.message);
+        return;
+      }
+      this.inboxForm.raw_text = '';
+      this.loadInboxItems();
+      this.showToast('در صندوق ورودی ثبت شد.');
+    },
+
+    dismissInboxItem(item) {
+      StorageLayer.update('inbox_items', item.id, { status: 'Dismissed' });
+      this.loadInboxItems();
+    },
+
+    restoreInboxItem(item) {
+      StorageLayer.update('inbox_items', item.id, { status: 'Pending' });
+      this.loadInboxItems();
+    },
+
+    /** برچسب نمایشی — InboxItem عنوان (title) ندارد، پس چند کلمه اول raw_text رو نشون می‌دیم (فقط UI، چیزی ذخیره نمی‌شه) */
+    inboxDisplayLabel(item) {
+      const text = (item.raw_text || '').trim();
+      return text.length > 80 ? text.slice(0, 80) + '…' : text;
+    },
+
+    inboxStatusMeta(status) {
+      const map = {
+        Pending:   { label: 'در انتظار',  badge: 'badge-progress' },
+        Suggested: { label: 'پیشنهاد شد', badge: 'badge-warning' },
+        Converted: { label: 'تبدیل شد',   badge: 'badge-success' },
+        Dismissed: { label: 'رد شده',     badge: 'badge-muted' },
+      };
+      return map[status] || map.Pending;
     },
 
     // ==================================================================
