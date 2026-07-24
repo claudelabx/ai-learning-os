@@ -1020,21 +1020,47 @@
 
       <div style="display:flex; flex-direction:column; gap:var(--space-s);" x-show="inboxItems.length > 0">
         <template x-for="item in inboxItems" :key="item.id">
-          <div class="card" style="display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-m);">
-            <div style="min-width:0;">
-              <p x-text="inboxDisplayLabel(item)" style="margin:0;"></p>
-              <p class="form-helper en" x-text="formatDueDate(item.created_at)" style="margin-top:var(--space-xs);"></p>
+          <div class="card" style="display:flex; flex-direction:column; gap:var(--space-s);">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-m);">
+              <div style="min-width:0;">
+                <p x-text="inboxDisplayLabel(item)" style="margin:0;"></p>
+                <p class="form-helper en" x-text="formatDueDate(item.created_at)" style="margin-top:var(--space-xs);"></p>
+              </div>
+              <div style="display:flex; align-items:center; gap:var(--space-s); flex-shrink:0;">
+                <span class="badge" :class="inboxStatusMeta(item.status).badge">
+                  <span x-text="inboxStatusMeta(item.status).label"></span>
+                </span>
+                <button class="mini-icon-btn" x-show="item.status !== 'Dismissed'" @click="dismissInboxItem(item)" title="رد کن" aria-label="رد کن">
+                  <span x-html="icon('x')"></span>
+                </button>
+                <button class="mini-icon-btn" x-show="item.status === 'Dismissed'" @click="restoreInboxItem(item)" title="بازگردانی" aria-label="بازگردانی">
+                  <span x-html="icon('refresh-cw')"></span>
+                </button>
+              </div>
             </div>
-            <div style="display:flex; align-items:center; gap:var(--space-s); flex-shrink:0;">
-              <span class="badge" :class="inboxStatusMeta(item.status).badge">
-                <span x-text="inboxStatusMeta(item.status).label"></span>
-              </span>
-              <button class="mini-icon-btn" x-show="item.status !== 'Dismissed'" @click="dismissInboxItem(item)" title="رد کن" aria-label="رد کن">
-                <span x-html="icon('x')"></span>
-              </button>
-              <button class="mini-icon-btn" x-show="item.status === 'Dismissed'" @click="restoreInboxItem(item)" title="بازگردانی" aria-label="بازگردانی">
-                <span x-html="icon('refresh-cw')"></span>
-              </button>
+
+            <!-- درخواست پیشنهاد AI — فقط وقتی هنوز پیشنهادی نگرفته -->
+            <button
+              class="btn btn-secondary"
+              x-show="item.status === 'Pending'"
+              @click="requestInboxSuggestion(item)"
+              :disabled="inboxRequestingId === item.id"
+              style="align-self:flex-start;">
+              <span x-html="icon('sparkles')"></span>
+              <span x-text="inboxRequestingId === item.id ? 'در حال دریافت پیشنهاد…' : 'درخواست پیشنهاد از AI'"></span>
+            </button>
+
+            <!-- نمایش پیشنهاد AI + تأیید/رد -->
+            <div x-show="item.status === 'Suggested'" style="background:var(--color-neutral-surface); border-radius:var(--radius-medium); padding:var(--space-m); display:flex; flex-direction:column; gap:var(--space-s);">
+              <p style="margin:0;">
+                <strong>پیشنهاد AI: </strong>
+                <span x-text="item.ai_suggested_type"></span>
+              </p>
+              <p class="form-helper" x-show="item.ai_suggestion_reason" x-text="item.ai_suggestion_reason" style="margin:0;"></p>
+              <div style="display:flex; gap:var(--space-s);">
+                <button class="btn btn-primary" @click="openAcceptInboxSuggestion(item)">تأیید و ساخت</button>
+                <button class="btn btn-secondary" @click="rejectInboxSuggestion(item)">رد پیشنهاد</button>
+              </div>
             </div>
           </div>
         </template>
@@ -2889,6 +2915,40 @@
 </div>
 
 <!-- =====================================================================
+     INBOX ACCEPT MODAL — تأیید پیشنهاد AI و ساخت رکورد واقعی (زیرفاز ۴-ج، گام ۴)
+     ===================================================================== -->
+<div class="modal-overlay" x-show="inboxAccept.open" x-cloak x-transition @keydown.escape.window="closeInboxAccept()">
+  <div class="modal modal-sm" @click.outside="closeInboxAccept()" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2>ساخت <span x-text="inboxAccept.targetType"></span></h2>
+        <p>عنوان رو تأیید یا ویرایش کن؛ متن خام به‌عنوان توضیح روی رکورد جدید می‌ره.</p>
+      </div>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:var(--space-m);">
+      <div class="form-group">
+        <label class="form-label" for="inbox-accept-title">عنوان</label>
+        <input id="inbox-accept-title" class="form-input" type="text" x-model="inboxAccept.title" @keydown.enter="confirmInboxConversion()">
+      </div>
+      <div class="form-group" x-show="inboxAccept.targetType === 'Task'">
+        <label class="form-label" for="inbox-accept-project">پروژه <span class="optional">(اجباری برای Task)</span></label>
+        <select id="inbox-accept-project" class="form-select" x-model="inboxAccept.project_id">
+          <option value="">— انتخاب کن —</option>
+          <template x-for="project in projects" :key="project.id">
+            <option :value="project.id" x-text="project.title"></option>
+          </template>
+        </select>
+        <p class="form-helper" x-show="projects.length === 0">هنوز پروژه‌ای نساختی — اول یک پروژه بساز.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="closeInboxAccept()">انصراف</button>
+      <button class="btn btn-primary" @click="confirmInboxConversion()">تأیید و ساخت</button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
      NOTE MODAL — Create / Edit (ماژول Knowledge)
      منبع فیلدها: 005-Data-Architecture (Base Entity + زیرنوع Memory)
      ===================================================================== -->
@@ -4442,6 +4502,31 @@ const StorageLayer = (() => {
     },
 
 
+    /** فراخوانی واقعی Gateway برای پیشنهاد دسته‌بندی یک InboxItem (سند 008 · مود دوم) */
+    async requestInboxSuggestion(rawText) {
+      const url = localStorage.getItem(PREF_PREFIX + 'ai_gateway_url');
+      if (!url) return fail('ابتدا از Settings به AI Gateway وصل شوید.', 'NOT_CONNECTED');
+      const secret = await this.resolveAiGatewaySecret();
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(secret ? { 'x-gateway-secret': secret } : {}),
+          },
+          body: JSON.stringify({ mode: 'classify', provider: 'auto', context: { raw_text: rawText } }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+          return fail((data.error && data.error.message) || 'خطای Gateway.', 'GATEWAY_ERROR');
+        }
+        return ok(data.data);
+      } catch (e) {
+        return fail('خطا در ارتباط با Gateway: ' + (e.message || 'نامشخص'), 'NETWORK_ERROR');
+      }
+    },
+
+
     async bootFromSavedConfig() {
       const url = localStorage.getItem(PREF_PREFIX + 'supabase_url');
       const encKey = localStorage.getItem(PREF_PREFIX + 'supabase_anon_key_enc');
@@ -4789,6 +4874,8 @@ function app() {
     // ====================================================================
     inboxItems: [],
     inboxForm: { raw_text: '' },
+    inboxRequestingId: null,
+    inboxAccept: { open: false, item: null, targetType: '', title: '', project_id: '' },
 
     // GOALS MODULE — state (فاز فنی ۶ · Goal Entity طبق بند ۹۱ سند چشم‌انداز)
     // Goal بالاترین سطح برنامه‌ریزیه؛ به‌عنوان لایه‌ی اضافه روی Project پیاده
@@ -5468,6 +5555,78 @@ function app() {
         Dismissed: { label: 'رد شده',     badge: 'badge-muted' },
       };
       return map[status] || map.Pending;
+    },
+
+    /** درخواست پیشنهاد دسته‌بندی از AI Gateway (سند 008 · مود دوم) */
+    async requestInboxSuggestion(item) {
+      this.inboxRequestingId = item.id;
+      const res = await StorageLayer.requestInboxSuggestion(item.raw_text);
+      this.inboxRequestingId = null;
+      if (!res.success) { this.showToast(res.error.message); return; }
+      StorageLayer.update('inbox_items', item.id, {
+        ai_suggested_type: res.data.suggested_type,
+        ai_suggestion_reason: res.data.reason,
+        status: 'Suggested',
+      });
+      this.loadInboxItems();
+    },
+
+    rejectInboxSuggestion(item) {
+      StorageLayer.update('inbox_items', item.id, {
+        status: 'Pending', ai_suggested_type: null, ai_suggestion_reason: null,
+      });
+      this.loadInboxItems();
+    },
+
+    /** باز کردن کادر تأیید — عنوان پیش‌فرض از چند کلمهٔ اول raw_text، قابل ویرایش (تصمیم این چت) */
+    openAcceptInboxSuggestion(item) {
+      const defaultTitle = item.raw_text.trim().slice(0, 60);
+      this.inboxAccept = {
+        open: true, item, targetType: item.ai_suggested_type, title: defaultTitle, project_id: '',
+      };
+    },
+
+    closeInboxAccept() {
+      this.inboxAccept = { open: false, item: null, targetType: '', title: '', project_id: '' };
+    },
+
+    /** ساخت رکورد واقعی + انتقال InboxItem به Converted — طبق سند 005 (بدون حالت میانی ناقص) */
+    confirmInboxConversion() {
+      const { item, targetType, project_id } = this.inboxAccept;
+      const title = this.inboxAccept.title.trim();
+      if (!title) { this.showToast('عنوان الزامی است.'); return; }
+      if (targetType === 'Task' && !project_id) { this.showToast('برای Task باید یک پروژه انتخاب کنی.'); return; }
+
+      const rawText = item.raw_text;
+      let collection, payload;
+      if (targetType === 'Project') {
+        collection = 'projects';
+        payload = { title, description: rawText, status: 'Draft', priority: 'Medium', version: 'v1', tags: [], goal_id: null };
+      } else if (targetType === 'Task') {
+        collection = 'tasks';
+        payload = {
+          project_id, title, description: rawText, status: 'Todo', priority: 'Medium', difficulty: 'Easy',
+          due_date: null, estimate_minutes: null, spent_minutes: null, checklist: [], dependencies: [],
+          related_files: [], related_prompt: null,
+        };
+      } else {
+        collection = 'notes';
+        payload = {
+          title, description: rawText, type: 'note', status: 'Draft', tags: [], version: 'v1',
+          project_id: null, recall_priority: null, source_chat_id: null,
+          version_history: [{ version: 'v1', description: 'نسخهٔ اولیه', content_snapshot: rawText, changed_at: new Date().toISOString(), change_type: 'initial' }],
+        };
+      }
+
+      const res = StorageLayer.create(collection, payload);
+      if (!res.success) { this.showToast(res.error.message); return; }
+
+      StorageLayer.update('inbox_items', item.id, {
+        status: 'Converted', converted_entity_type: targetType, converted_entity_id: res.data.id,
+      });
+      this.closeInboxAccept();
+      this.loadInboxItems();
+      this.showToast(title + ' ساخته شد.');
     },
 
     // ==================================================================
