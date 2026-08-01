@@ -70,21 +70,43 @@ function buildClassifyPrompt(rawText) {
   return { systemPrompt, userPrompt };
 }
 
-// ---- Prompt Orchestrator برای AI Interview (سند 012 · زیرفاز 1.5-ج · مود سوم Gateway) ----
-// ورودی: یک جمله هدف کاربر. خروجی: Draft 0 = هدف + یک پروژه + حداکثر ۵ تسک اول.
-// فیلدهای Goal طبق تصمیم ثبت‌شده کاربر در چت اجرایی: title + reason + success_metric.
-function buildInterviewPrompt(goalSentence) {
+// ---- Prompt Orchestrator برای AI Interview (سند 012 · نسخه 1.4 · گفتگومحور · مود سوم Gateway) ----
+// ورودی: تاریخچه کامل مکالمه (کاربر/AI). خروجی: یا یک سؤال بعدی، یا Draft نهایی
+// {Goal + چند Project فازبندی‌شده + Taskهای تاریخ‌دار}. بدون تغییر زیرساخت (سند 012 نسخه 1.4):
+// فقط ارسال تاریخچه در هر فراخوانی + اصلاح System Prompt — همان Serverless Function و سه Provider.
+function buildInterviewPrompt(history) {
   const systemPrompt =
-    'تو یک منتور برنامه‌ریزی هستی داخل اپلیکیشن «AI Learning OS». ' +
-    'کاربر فقط یک جمله درباره هدفش نوشته. تو باید یک پیش‌نویس اولیه (Draft 0) بسازی: ' +
-    'یک «هدف» شفاف، یک «پروژه» عملی برای شروع، و حداکثر ۵ «تسک» اولِ کوچک و قابل انجام. ' +
-    'همه متن‌ها فارسی، مشخص و بدون کلی‌گویی باشند. ' +
+    'تو یک منتور برنامه‌ریزی هستی داخل اپلیکیشن «AI Learning OS» و در حال یک مصاحبه گفتگومحور کوتاه با کاربر هستی. ' +
+    'هدف: جمع‌کردن اطلاعات کافی (به‌خصوص بازه زمانی، فازها، و ددلاین‌های واقعی) پیش از ساخت پیش‌نویس نهایی. ' +
+    'در هر نوبت دقیقاً یکی از این دو کار را انجام بده: ' +
+    '(۱) اگر اطلاعات هنوز ناقص است، فقط یک سؤال کوتاه و مشخص دربارهٔ مهم‌ترین جزئیات ناقص بپرس (نه چند سؤال با هم). ' +
+    '(۲) اگر اطلاعات کافی جمع شده (یا گفتگو به ۴ سؤال رسیده — در این حالت حتی با اطلاعات ناقص با بهترین حدس منطقی ادامه بده، از سؤال بی‌پایان بپرهیز)، یک پیش‌نویس نهایی بساز. ' +
+    'در پیش‌نویس نهایی می‌توانی چند «Project» جدا بسازی (هرکدام معادل یک فاز یا بخش مستقل از هدف کاربر)؛ هر Project حداکثر ۸ Task با تاریخ (در صورت مشخص‌بودن) داشته باشد. تمام متن‌ها فارسی، مشخص و بدون کلی‌گویی باشند. ' +
+    'فقط و فقط یکی از این دو ساختار JSON خام را برگردان، بدون هیچ متن اضافه یا Markdown fence:\n' +
+    'برای سؤال: {"status": "question", "question": "متن سؤال کوتاه فارسی"}\n' +
+    'برای پیش‌نویس نهایی: {"status": "draft", "draft": {"goal": {"title": "...", "reason": "...", "success_metric": "..."}, "projects": [{"title": "...", "description": "...", "tasks": [{"title": "...", "priority": "Low یا Medium یا High یا Critical", "due_date": "YYYY-MM-DD یا null", "planned_date": "YYYY-MM-DD یا null"}]}]}}';
+  const transcript = (history || [])
+    .map((m) => (m.role === 'user' ? 'کاربر: ' : 'AI: ') + String(m.content || ''))
+    .join('\n');
+  const userPrompt = 'تاریخچه گفتگو تا این لحظه:\n' + transcript + '\n\nحالا طبق قوانین بالا پاسخ بده.';
+  return { systemPrompt, userPrompt };
+}
+
+// ---- Prompt Orchestrator برای دستیار زمان‌بندی (اسپرینت Personal Mastery · مود چهارم Gateway) ----
+// ورودی: یک جملهٔ لحظه‌ای کاربر + امروز (میلادی/شمسی) + فهرست کوتاه پروژه‌های موجود.
+// خروجی: پیش‌نویس یک Task با planned_date (+ در صورت وجود ساعت، start_time/end_time).
+// اصل Human in Control: خروجی همیشه پیش‌نویس قابل‌ویرایش است، نه ساخت مستقیم رکورد.
+function buildSchedulePrompt(sentence, todayGregorian, todayJalali, todayWeekday, projects) {
+  const projectLines = (projects || []).map((p) => `- ${p.id}: ${p.title}`).join('\n') || '(هیچ پروژه‌ای ثبت نشده)';
+  const systemPrompt =
+    'تو یک دستیار زمان‌بندی هستی داخل اپلیکیشن «AI Learning OS». ' +
+    `امروز ${todayWeekday} به‌تاریخ میلادی ${todayGregorian} (شمسی ${todayJalali}) است. ` +
+    'کاربر یک جملهٔ کوتاه و لحظه‌ای دربارهٔ یک کار/جلسه می‌نویسد (مثلاً «امروز ۴ تا ۶ جلسه گروهی المپیاد» یا «فردا صبح مطالعهٔ فیزیولوژی»). ' +
+    'باید تاریخ نسبی (امروز/فردا/پس‌فردا/نام روز هفته) را به تاریخ میلادی دقیق (YYYY-MM-DD) تبدیل کنی، و اگر ساعت شروع/پایان ذکر شده، آن را به فرمت 24 ساعته HH:MM استخراج کنی (اگر ساعت ذکر نشده، null بگذار). ' +
+    'اگر جمله به‌وضوح به یکی از پروژه‌های زیر مرتبط است، شناسهٔ همان پروژه را برگردان؛ در غیر این صورت null. فهرست پروژه‌های موجود:\n' + projectLines + '\n' +
     'فقط و فقط یک JSON خام و معتبر برگردون، دقیقاً با این شکل، بدون هیچ متن اضافه یا Markdown fence: ' +
-    '{"goal": {"title": "عنوان کوتاه هدف", "reason": "چرا این هدف مهم است — یک جمله", "success_metric": "با چه معیاری موفقیت سنجیده می‌شود — یک جمله"}, ' +
-    '"project": {"title": "عنوان اولین پروژه عملی", "description": "توضیح کوتاه پروژه"}, ' +
-    '"tasks": [{"title": "عنوان تسک", "priority": "Low یا Medium یا High یا Critical"}]} ' +
-    '— آرایه tasks بین ۱ تا ۵ عضو داشته باشد و اولویت هر تسک را واقع‌بینانه انتخاب کن.';
-  const userPrompt = `جمله هدف کاربر:\n${goalSentence}`;
+    '{"title": "عنوان کوتاه کار/جلسه به فارسی", "planned_date": "YYYY-MM-DD", "start_time": "HH:MM یا null", "end_time": "HH:MM یا null", "project_id": "شناسه یا null", "priority": "Low یا Medium یا High یا Critical"}';
+  const userPrompt = `جملهٔ کاربر:\n${sentence}`;
   return { systemPrompt, userPrompt };
 }
 
@@ -230,20 +252,23 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // ---- مود سوم: interview (سند 012 · زیرفاز 1.5-ج · مصوب سند 003 نسخه 2.2) ----
+    // ---- مود سوم: interview (سند 012 نسخه 1.4 · گفتگومحور · مصوب سند 003 نسخه 2.2) ----
     // نکته آشتی اسناد (به‌روزشده در پاکسازی پس از فاز 1.5): طبق سند 003 نسخه 2.3 و سند 008
     // نسخه 2.2، الزام ثبت فراخوانی‌ها در جدول ai_logs رسماً به «پیش از فاز عمومی» موکول شد
     // (Future Extensions هر دو سند). دلیل: قید سند 012 هر تغییر Schema در فاز 1.5 را ممنوع
     // کرده و لاگ‌نویسی از Serverless Function نیازمند دسترسی مستقیم Gateway به Supabase است.
     // بنابراین نبودِ لاگ در هر سه مود، رفتار مصوب فعلی است، نه شکاف سند-با-کد.
     if (mode === 'interview') {
-      const goalSentence = ((body.context && body.context.goal_sentence) || '').trim();
-      if (!goalSentence) {
-        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'goal_sentence خالی است.' } });
+      const history = (body.context && Array.isArray(body.context.history)) ? body.context.history : [];
+      const cleanHistory = history
+        .filter((m) => m && typeof m.content === 'string' && m.content.trim() && (m.role === 'user' || m.role === 'assistant'))
+        .map((m) => ({ role: m.role, content: m.content.trim() }));
+      if (!cleanHistory.length || cleanHistory[cleanHistory.length - 1].role !== 'user') {
+        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'تاریخچه گفتگو باید با یک پیام از کاربر پایان یابد.' } });
       }
-      const { systemPrompt, userPrompt } = buildInterviewPrompt(goalSentence);
-      // سقف بالاتر توکن فقط برای این مود — Draft 0 فارسی از ۵۰۰ توکن بزرگ‌تر است
-      const { text, provider } = await callWithFallback(requestedProvider, systemPrompt, userPrompt, 1500);
+      const { systemPrompt, userPrompt } = buildInterviewPrompt(cleanHistory);
+      // سقف بالاتر توکن فقط برای این مود — Draft چندپروژه‌ای فارسی از ۵۰۰ توکن بزرگ‌تر است
+      const { text, provider } = await callWithFallback(requestedProvider, systemPrompt, userPrompt, 1800);
 
       let parsed;
       try {
@@ -253,41 +278,111 @@ module.exports = async function handler(req, res) {
         return res.status(502).json({ success: false, error: { code: 'PARSE_ERROR', message: 'پاسخ AI به‌صورت JSON معتبر نبود.' } });
       }
 
-      // اعتبارسنجی و نرمال‌سازی ساختار ثابت (بدون Silent Failure — سند 008)
-      const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
-      const goal = parsed && parsed.goal;
-      const project = parsed && parsed.project;
-      const rawTasks = parsed && parsed.tasks;
-      if (!goal || typeof goal.title !== 'string' || !goal.title.trim() ||
-          !project || typeof project.title !== 'string' || !project.title.trim() ||
-          !Array.isArray(rawTasks) || rawTasks.length === 0) {
-        return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'ساختار Draft 0 برگشتی نامعتبر بود.' } });
-      }
-      const tasks = rawTasks
-        .filter((t) => t && typeof t.title === 'string' && t.title.trim())
-        .slice(0, 5) // سقف ۵ تسک — قید صریح سند 012
-        .map((t) => ({
-          title: t.title.trim(),
-          priority: validPriorities.includes(t.priority) ? t.priority : 'Medium',
-        }));
-      if (!tasks.length) {
-        return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'هیچ تسک معتبری در Draft 0 نبود.' } });
+      // حالت ۱: AI هنوز سؤال دارد — بدون ساخت هیچ رکورد یا Draft
+      if (parsed && parsed.status === 'question') {
+        if (typeof parsed.question !== 'string' || !parsed.question.trim()) {
+          return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'سؤال برگشتی از AI نامعتبر بود.' } });
+        }
+        return res.status(200).json({
+          success: true,
+          data: { status: 'question', question: parsed.question.trim(), provider },
+          error: null,
+        });
       }
 
+      // حالت ۲: Draft نهایی — اعتبارسنجی و نرمال‌سازی ساختار ثابت (بدون Silent Failure — سند 008)
+      if (parsed && parsed.status === 'draft') {
+        const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+        const d = parsed.draft;
+        const goal = d && d.goal;
+        const rawProjects = d && d.projects;
+        if (!goal || typeof goal.title !== 'string' || !goal.title.trim() ||
+            !Array.isArray(rawProjects) || rawProjects.length === 0) {
+          return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'ساختار Draft برگشتی نامعتبر بود.' } });
+        }
+        const projects = rawProjects
+          .filter((p) => p && typeof p.title === 'string' && p.title.trim())
+          .slice(0, 6) // سقف منطقی تعداد Project در یک Draft
+          .map((p) => ({
+            title: p.title.trim(),
+            description: (typeof p.description === 'string' ? p.description.trim() : ''),
+            tasks: (Array.isArray(p.tasks) ? p.tasks : [])
+              .filter((t) => t && typeof t.title === 'string' && t.title.trim())
+              .slice(0, 8) // سقف ۸ تسک به‌ازای هر Project — قید صریح سند 012
+              .map((t) => ({
+                title: t.title.trim(),
+                priority: validPriorities.includes(t.priority) ? t.priority : 'Medium',
+                due_date: (typeof t.due_date === 'string' && dateRe.test(t.due_date)) ? t.due_date : null,
+                planned_date: (typeof t.planned_date === 'string' && dateRe.test(t.planned_date)) ? t.planned_date : null,
+              })),
+          }));
+        if (!projects.length) {
+          return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'هیچ Project معتبری در Draft نبود.' } });
+        }
+        return res.status(200).json({
+          success: true,
+          data: {
+            status: 'draft',
+            draft: {
+              goal: {
+                title: goal.title.trim(),
+                reason: (typeof goal.reason === 'string' ? goal.reason.trim() : ''),
+                success_metric: (typeof goal.success_metric === 'string' ? goal.success_metric.trim() : ''),
+              },
+              projects,
+            },
+            provider,
+          },
+          error: null,
+        });
+      }
+
+      return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'ساختار پاسخ AI (status) نامعتبر بود.' } });
+    }
+
+    // ---- مود چهارم: schedule (اسپرینت Personal Mastery — دستیار زمان‌بندی لحظه‌ای، بند ۳) ----
+    // یادداشت لاگ: مثل سه مود قبلی، بدون ثبت در ai_logs (رجوع به یادداشت آشتی اسناد بالای مود interview).
+    if (mode === 'schedule') {
+      const ctx = body.context || {};
+      const sentence = (ctx.sentence || '').trim();
+      if (!sentence) {
+        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'sentence خالی است.' } });
+      }
+      if (!ctx.today_gregorian || !ctx.today_jalali) {
+        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'اطلاعات تاریخ امروز (today_gregorian/today_jalali) ارسال نشده.' } });
+      }
+      const { systemPrompt, userPrompt } = buildSchedulePrompt(
+        sentence, ctx.today_gregorian, ctx.today_jalali, ctx.today_weekday || '', ctx.projects || []
+      );
+      const { text, provider } = await callWithFallback(requestedProvider, systemPrompt, userPrompt, 400);
+
+      let parsed;
+      try {
+        const cleaned = text.replace(/```json|```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        return res.status(502).json({ success: false, error: { code: 'PARSE_ERROR', message: 'پاسخ AI به‌صورت JSON معتبر نبود.' } });
+      }
+
+      const validPriorities = ['Low', 'Medium', 'High', 'Critical'];
+      const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+      const timeRe = /^\d{2}:\d{2}$/;
+      if (!parsed || typeof parsed.title !== 'string' || !parsed.title.trim() ||
+          typeof parsed.planned_date !== 'string' || !dateRe.test(parsed.planned_date)) {
+        return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'ساختار پیش‌نویس زمان‌بندی نامعتبر بود.' } });
+      }
+      const knownProjectIds = (ctx.projects || []).map((p) => p.id);
       return res.status(200).json({
         success: true,
         data: {
           draft: {
-            goal: {
-              title: goal.title.trim(),
-              reason: (typeof goal.reason === 'string' ? goal.reason.trim() : ''),
-              success_metric: (typeof goal.success_metric === 'string' ? goal.success_metric.trim() : ''),
-            },
-            project: {
-              title: project.title.trim(),
-              description: (typeof project.description === 'string' ? project.description.trim() : ''),
-            },
-            tasks,
+            title: parsed.title.trim(),
+            planned_date: parsed.planned_date,
+            start_time: (typeof parsed.start_time === 'string' && timeRe.test(parsed.start_time)) ? parsed.start_time : null,
+            end_time: (typeof parsed.end_time === 'string' && timeRe.test(parsed.end_time)) ? parsed.end_time : null,
+            project_id: (typeof parsed.project_id === 'string' && knownProjectIds.includes(parsed.project_id)) ? parsed.project_id : null,
+            priority: validPriorities.includes(parsed.priority) ? parsed.priority : 'Medium',
           },
           provider,
         },
