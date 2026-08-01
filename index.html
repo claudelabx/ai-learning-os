@@ -1029,6 +1029,7 @@
     animation:spin 800ms linear infinite;
   }
   @keyframes spin{ to{ transform:rotate(360deg); } }
+  .spin{ display:inline-flex; animation:spin 800ms linear infinite; }
 
   /* =====================================================================
      ماسکات «نور» — پولیش 1.5-هـ3
@@ -1385,6 +1386,20 @@
          زیرفاز 1.5-و (سند 012) — داشبورد تعاملی بر پایه planned_date (سند 005 نسخه 4.2)
          اصل حاکم: هیچ عمل ساده‌ای کاربر را مجبور به ترک داشبورد نمی‌کند (سند 002).
          ================================================================== -->
+
+    <!-- دستیار زمان‌بندی لحظه‌ای — بند ۳ اسپرینت Personal Mastery؛ همیشه در دسترس روی داشبورد -->
+    <div class="card" style="display:flex; align-items:center; gap:var(--space-m);">
+      <div class="kpi-icon" style="flex-shrink:0;"><span x-html="icon('sparkles')"></span></div>
+      <input
+        class="form-input" style="flex:1;"
+        type="text" x-model="scheduler.sentence"
+        placeholder="مثلاً: امروز ۴ تا ۶ جلسه گروهی المپیاد — با یک جمله به دستیار بگو"
+        @keydown.enter.prevent="quickScheduleFromDashboard()">
+      <button class="btn btn-primary" @click="quickScheduleFromDashboard()" :disabled="!scheduler.sentence.trim()">
+        <span x-html="icon('sparkles')"></span>
+        <span>ثبت در برنامه</span>
+      </button>
+    </div>
 
     <!-- ۲) لیست «برنامه امروز» — همه تسک‌های planned_date = امروز از همه پروژه‌ها -->
     <div class="card">
@@ -2132,6 +2147,9 @@
                     <h3 class="note-card-title" x-text="resource.title"></h3>
                   </div>
                   <div class="note-card-actions" @click.stop>
+                    <button class="mini-icon-btn" x-show="resource.storage_path || resource.url" @click="openResourceFile(resource)" title="باز کردن فایل/لینک" aria-label="باز کردن فایل یا لینک">
+                      <span x-html="icon('paperclip')"></span>
+                    </button>
                     <button class="mini-icon-btn" @click="openEditResource(resource)" title="ویرایش" aria-label="ویرایش Resource">
                       <span x-html="icon('pencil')"></span>
                     </button>
@@ -2444,6 +2462,9 @@
                 <h3 class="note-card-title" x-text="resource.title"></h3>
               </div>
               <div class="note-card-actions" @click.stop>
+                <button class="mini-icon-btn" x-show="resource.storage_path || resource.url" @click="openResourceFile(resource)" title="باز کردن فایل/لینک" aria-label="باز کردن فایل یا لینک">
+                  <span x-html="icon('paperclip')"></span>
+                </button>
                 <button class="mini-icon-btn" @click="openEditResource(resource)" title="ویرایش" aria-label="ویرایش Resource">
                   <span x-html="icon('pencil')"></span>
                 </button>
@@ -3166,6 +3187,10 @@
      QUICK ADD (FAB) — طبق 002-Information-Architecture
      ===================================================================== -->
 <div class="fab-menu" x-show="quickAddOpen" x-cloak @click.outside="quickAddOpen = false" x-transition>
+  <button @click="quickAddOpen = false; openScheduler()">
+    <span x-html="icon('sparkles')"></span>
+    <span>بگو به دستیار زمان‌بندی کنه</span>
+  </button>
   <template x-for="item in quickAddTypes" :key="item.id">
     <button @click="quickAdd(item)">
       <span x-html="icon(item.icon)"></span>
@@ -3976,6 +4001,32 @@
       </div>
 
       <div class="form-group">
+        <label class="form-label">فایل <span class="optional">(اختیاری — جدا از لینک/URL بالا)</span></label>
+        <template x-if="!resourceForm.storage_path">
+          <div>
+            <input type="file" id="rf-file-input" style="display:none" @change="uploadResourceFile($event)">
+            <button type="button" class="btn btn-secondary" :disabled="resourceUploading" @click="document.getElementById('rf-file-input').click()">
+              <span :class="{spin: resourceUploading}" x-html="icon(resourceUploading ? 'loader' : 'upload')"></span>
+              <span x-text="resourceUploading ? 'در حال آپلود…' : 'انتخاب و آپلود فایل'"></span>
+            </button>
+            <p class="form-helper">جزوه، پاور، نمونه سوال، ویدیو، ویس یا هر فایل دیگر — بدون محدودیت نوع (حجم هر فایل معمولاً تا ۵۰ مگابایت).</p>
+          </div>
+        </template>
+        <template x-if="resourceForm.storage_path">
+          <div class="tag-field" style="justify-content:space-between;">
+            <span style="display:flex; align-items:center; gap:6px;">
+              <span x-html="icon('paperclip')"></span>
+              <span x-text="resourceFileName(resourceForm.storage_path)"></span>
+            </span>
+            <button type="button" class="mini-icon-btn danger" @click="removeUploadedResourceFile()" title="حذف فایل" aria-label="حذف فایل انتخاب‌شده">
+              <span x-html="icon('x')"></span>
+            </button>
+          </div>
+        </template>
+        <p class="form-error" x-show="resourceUploadError" x-text="resourceUploadError"></p>
+      </div>
+
+      <div class="form-group">
         <label class="form-label" for="rf-project">پروژهٔ مرتبط <span class="optional">(اختیاری)</span></label>
         <select id="rf-project" class="form-select" x-model="resourceForm.project_id">
           <option :value="null">بدون پروژه</option>
@@ -4026,13 +4077,13 @@
      منبع فیلدها: 005 (Base Entity) + 002 (نقش ماژول) — Mood/TimeLog/AI-Discussions
      طبق تصمیمات این چت اضافه شدند (Gap مستندات).
      ===================================================================== -->
-<!-- ===== مودال AI Interview — Draft 0 (زیرفاز 1.5-ج · سند 012) ===== -->
+<!-- ===== مودال AI Interview گفتگومحور (سند 012 نسخه 1.4) ===== -->
 <div class="modal-overlay" x-show="interview.open" x-cloak x-transition @keydown.escape.window="interview.open && closeInterview()">
   <div class="modal" @click.outside="closeInterview()" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div>
         <h2>شروع با AI</h2>
-        <p>یک جمله درباره هدفت بنویس؛ AI یک پیش‌نویس کامل پیشنهاد می‌دهد. هیچ‌چیز بدون تأیید تو ثبت نمی‌شود.</p>
+        <p>هدفت را بنویس؛ اگر جزئیات کافی نباشد AI سؤال می‌پرسد، وگرنه مستقیم پیش‌نویس می‌سازد. هیچ‌چیز بدون تأیید تو ثبت نمی‌شود.</p>
       </div>
       <button class="icon-btn" @click="closeInterview()" aria-label="بستن">
         <span x-html="icon('x')"></span>
@@ -4040,13 +4091,22 @@
     </div>
 
     <div class="modal-body">
-      <!-- مرحله ۱: ورودی جمله هدف -->
-      <template x-if="interview.stage === 'input'">
+      <!-- مرحله ۱: گفتگو — رونوشت سؤال‌های قبلی AI + ورودی پیام بعدی -->
+      <template x-if="interview.stage === 'chat'">
         <div style="display:flex; flex-direction:column; gap:var(--space-m);">
+          <template x-if="interviewAssistantQuestions.length > 0">
+            <div style="display:flex; flex-direction:column; gap:var(--space-s); max-height:220px; overflow-y:auto;">
+              <template x-for="(m, idx) in interview.history" :key="'iv-h-' + idx">
+                <div class="form-helper" :style="m.role === 'assistant' ? 'color:var(--color-primary); font-weight:600;' : ''">
+                  <span x-text="(m.role === 'assistant' ? 'AI: ' : 'تو: ') + m.content"></span>
+                </div>
+              </template>
+            </div>
+          </template>
           <div class="form-group">
-            <label class="form-label" for="iv-sentence">جمله هدف</label>
-            <textarea id="iv-sentence" class="form-input" rows="2" placeholder="مثلاً: می‌خواهم توسعه‌دهنده AI شوم" x-model="interview.sentence" @keydown.enter.prevent="submitInterviewSentence()"></textarea>
-            <span class="form-helper">فقط یک جمله کافی است — جزئیات را بعداً در پیش‌نویس ویرایش می‌کنی.</span>
+            <label class="form-label" for="iv-sentence" x-text="interviewAssistantQuestions.length > 0 ? 'پاسخ تو' : 'هدفت چیست؟'"></label>
+            <textarea id="iv-sentence" class="form-input" rows="2" placeholder="مثلاً: می‌خواهم برنامهٔ المپیادم را بریزم" x-model="interview.sentence" @keydown.enter.prevent="submitInterviewSentence()"></textarea>
+            <span class="form-helper" x-show="interviewAssistantQuestions.length === 0">فقط چند جمله کافی است — اگر جزئیاتی لازم باشد، AI سؤال می‌پرسد.</span>
           </div>
           <p class="form-error" x-show="interview.error" x-text="interview.error"></p>
         </div>
@@ -4056,14 +4116,14 @@
       <template x-if="interview.stage === 'loading'">
         <div style="display:flex; flex-direction:column; align-items:center; gap:var(--space-m); padding-block:var(--space-xl);">
           <div class="spinner"></div>
-          <p style="color:var(--color-text-secondary);">در حال ساخت پیش‌نویس با AI…</p>
+          <p style="color:var(--color-text-secondary);">در حال فکر کردن با AI…</p>
         </div>
       </template>
 
-      <!-- مرحله ۳: Draft 0 قابل‌ویرایش -->
+      <!-- مرحله ۳: Draft نهایی قابل‌ویرایش — هدف + چند پروژه فازبندی‌شده، هرکدام با تسک‌های تاریخ‌دار -->
       <template x-if="interview.stage === 'edit' && interview.draft">
         <div style="display:flex; flex-direction:column; gap:var(--space-l);">
-          <p class="form-helper">این فقط یک پیش‌نویس است (Draft 0) — هر بخش را می‌توانی تغییر دهی یا تسک‌ها را حذف کنی. با بستن پنجره، پیش‌نویس از بین می‌رود و هیچ رکوردی ساخته نمی‌شود.</p>
+          <p class="form-helper">این فقط یک پیش‌نویس است — هر بخش را می‌توانی تغییر دهی، پروژه/تسک اضافه یا حذف کنی. با بستن پنجره، پیش‌نویس از بین می‌رود و هیچ رکوردی ساخته نمی‌شود.</p>
 
           <div class="form-group">
             <label class="form-label" for="iv-goal-title">هدف</label>
@@ -4079,27 +4139,42 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="iv-project-title">اولین پروژه</label>
-            <input id="iv-project-title" class="form-input" type="text" x-model="interview.draft.project.title" placeholder="عنوان پروژه">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="iv-project-desc">توضیح پروژه</label>
-            <textarea id="iv-project-desc" class="form-input" rows="2" x-model="interview.draft.project.description"></textarea>
-          </div>
+            <div class="section-title-row">
+              <label class="form-label">پروژه‌ها (فازها)</label>
+              <button class="btn btn-secondary" style="height:32px; padding:0 var(--space-m);" @click="addInterviewProject()">
+                <span x-html="icon('plus')"></span><span>پروژه جدید</span>
+              </button>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">تسک‌های اول (حداکثر ۵)</label>
-            <div style="display:flex; flex-direction:column; gap:var(--space-s);">
-              <template x-for="(t, idx) in interview.draft.tasks" :key="idx">
-                <div style="display:flex; align-items:center; gap:var(--space-s);">
-                  <input class="form-input" type="text" x-model="t.title" style="flex:1;" placeholder="عنوان تسک">
-                  <select class="form-select" x-model="t.priority" style="width:auto;">
-                    <template x-for="opt in priorityOptions" :key="opt.value">
-                      <option :value="opt.value" x-text="opt.label" :selected="t.priority === opt.value"></option>
+            <div style="display:flex; flex-direction:column; gap:var(--space-m); margin-top:var(--space-s);">
+              <template x-for="(p, pIdx) in interview.draft.projects" :key="'iv-p-' + pIdx">
+                <div class="card" style="padding:var(--space-m); display:flex; flex-direction:column; gap:var(--space-s);">
+                  <div style="display:flex; gap:var(--space-s); align-items:center;">
+                    <input class="form-input" style="flex:1;" type="text" x-model="p.title" placeholder="عنوان پروژه/فاز">
+                    <button class="mini-icon-btn danger" @click="removeInterviewProject(pIdx)" title="حذف پروژه" aria-label="حذف پروژه">
+                      <span x-html="icon('trash-2')"></span>
+                    </button>
+                  </div>
+                  <textarea class="form-input" rows="1" x-model="p.description" placeholder="توضیح کوتاه (اختیاری)"></textarea>
+
+                  <div style="display:flex; flex-direction:column; gap:6px;">
+                    <template x-for="(t, tIdx) in p.tasks" :key="'iv-t-' + pIdx + '-' + tIdx">
+                      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                        <input class="form-input" type="text" x-model="t.title" style="flex:1; min-width:140px;" placeholder="عنوان تسک">
+                        <select class="form-select" x-model="t.priority" style="width:auto;">
+                          <template x-for="opt in priorityOptions" :key="opt.value">
+                            <option :value="opt.value" x-text="opt.label"></option>
+                          </template>
+                        </select>
+                        <input class="form-input en" style="direction:ltr; width:135px;" type="date" x-model="t.due_date" title="ددلاین">
+                        <button class="mini-icon-btn" @click="removeInterviewTask(pIdx, tIdx)" title="حذف تسک" aria-label="حذف تسک">
+                          <span x-html="icon('x')"></span>
+                        </button>
+                      </div>
                     </template>
-                  </select>
-                  <button class="mini-icon-btn" @click="removeInterviewTask(idx)" title="حذف تسک" aria-label="حذف تسک">
-                    <span x-html="icon('x')"></span>
+                  </div>
+                  <button class="btn btn-secondary" style="height:32px; padding:0 var(--space-m); align-self:flex-start;" @click="addInterviewTask(pIdx)">
+                    <span x-html="icon('plus')"></span><span>تسک جدید</span>
                   </button>
                 </div>
               </template>
@@ -4113,13 +4188,109 @@
 
     <div class="modal-footer">
       <button class="btn btn-secondary" @click="closeInterview()">انصراف</button>
-      <button class="btn btn-primary" x-show="interview.stage === 'input'" @click="submitInterviewSentence()">
+      <button class="btn btn-primary" x-show="interview.stage === 'chat'" @click="submitInterviewSentence()">
         <span x-html="icon('sparkles')"></span>
-        <span>ساخت پیش‌نویس</span>
+        <span x-text="interviewAssistantQuestions.length > 0 ? 'ارسال پاسخ' : 'شروع'"></span>
       </button>
       <button class="btn btn-primary" x-show="interview.stage === 'edit'" :disabled="interview.saving" @click="confirmInterviewDraft()">
         <span x-html="icon('check-circle-2')"></span>
         <span x-text="interview.saving ? 'در حال ساخت…' : 'تأیید و ساخت'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== مودال دستیار زمان‌بندی — بند ۳ اسپرینت Personal Mastery (مود چهارم Gateway) ===== -->
+<div class="modal-overlay" x-show="scheduler.open" x-cloak x-transition @keydown.escape.window="scheduler.open && closeScheduler()">
+  <div class="modal modal-sm" @click.outside="closeScheduler()" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2>دستیار زمان‌بندی</h2>
+        <p>یک جمله دربارهٔ کار یا جلسه بنویس؛ AI پیش‌نویس Task را با تاریخ/ساعت می‌سازد. هیچ‌چیز بدون تأیید تو ثبت نمی‌شود.</p>
+      </div>
+      <button class="icon-btn" @click="closeScheduler()" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- مرحله ۱: ورودی جمله -->
+      <template x-if="scheduler.stage === 'input'">
+        <div style="display:flex; flex-direction:column; gap:var(--space-m);">
+          <div class="form-group">
+            <label class="form-label" for="sch-sentence">جمله</label>
+            <textarea id="sch-sentence" class="form-input" rows="2" placeholder="مثلاً: فردا صبح ۹ تا ۱۱ مطالعهٔ فیزیولوژی" x-model="scheduler.sentence" @keydown.enter.prevent="submitSchedulerSentence()"></textarea>
+          </div>
+          <p class="form-error" x-show="scheduler.error" x-text="scheduler.error"></p>
+        </div>
+      </template>
+
+      <!-- مرحله ۲: در انتظار Gateway -->
+      <template x-if="scheduler.stage === 'loading'">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:var(--space-m); padding-block:var(--space-xl);">
+          <div class="spinner"></div>
+          <p style="color:var(--color-text-secondary);">در حال تحلیل جمله با AI…</p>
+        </div>
+      </template>
+
+      <!-- مرحله ۳: پیش‌نویس قابل‌ویرایش -->
+      <template x-if="scheduler.stage === 'confirm' && scheduler.draft">
+        <div style="display:flex; flex-direction:column; gap:var(--space-m);">
+          <div class="form-group">
+            <label class="form-label" for="sch-title">عنوان</label>
+            <input id="sch-title" class="form-input" type="text" x-model="scheduler.draft.title">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="sch-date">تاریخ (شمسی: <span x-text="jalaliFullLabel(scheduler.draft.planned_date)"></span>)</label>
+              <input id="sch-date" class="form-input en" style="direction:ltr;" type="date" x-model="scheduler.draft.planned_date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">اولویت</label>
+              <select class="form-select" x-model="scheduler.draft.priority">
+                <template x-for="opt in priorityOptions" :key="opt.value">
+                  <option :value="opt.value" x-text="opt.label"></option>
+                </template>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="sch-start">ساعت شروع <span class="optional">(اختیاری)</span></label>
+              <input id="sch-start" class="form-input en" style="direction:ltr;" type="time" x-model="scheduler.draft.start_time">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sch-end">ساعت پایان <span class="optional">(اختیاری)</span></label>
+              <input id="sch-end" class="form-input en" style="direction:ltr;" type="time" x-model="scheduler.draft.end_time">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="sch-project">پروژهٔ مرتبط <span class="optional">(اختیاری)</span></label>
+            <select id="sch-project" class="form-select" x-model="scheduler.draft.project_id">
+              <option :value="null">بدون پروژه</option>
+              <template x-for="project in projects" :key="project.id">
+                <option :value="project.id" x-text="project.title"></option>
+              </template>
+            </select>
+          </div>
+
+          <p class="form-error" x-show="scheduler.error" x-text="scheduler.error"></p>
+        </div>
+      </template>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="closeScheduler()">انصراف</button>
+      <button class="btn btn-primary" x-show="scheduler.stage === 'input'" @click="submitSchedulerSentence()">
+        <span x-html="icon('sparkles')"></span>
+        <span>تحلیل با AI</span>
+      </button>
+      <button class="btn btn-primary" x-show="scheduler.stage === 'confirm'" :disabled="scheduler.saving" @click="confirmSchedulerDraft()">
+        <span x-html="icon('check-circle-2')"></span>
+        <span x-text="scheduler.saving ? 'در حال ثبت…' : 'تأیید و ثبت در برنامه'"></span>
       </button>
     </div>
   </div>
@@ -5337,7 +5508,8 @@ const StorageLayer = (() => {
 
 
     /** فراخوانی واقعی Gateway برای تولید Draft 0 از یک جمله هدف (سند 012 · مود سوم — زیرفاز 1.5-ج) */
-    async requestInterviewDraft(goalSentence) {
+    /** فراخوانی واقعی Gateway برای AI Interview گفتگومحور (سند 012 نسخه 1.4 · مود سوم) — تاریخچه کامل مکالمه ارسال می‌شود */
+    async requestInterviewDraft(history) {
       const url = localStorage.getItem(PREF_PREFIX + 'ai_gateway_url');
       if (!url) return fail('ابتدا از Settings به AI Gateway وصل شوید.', 'NOT_CONNECTED');
       const secret = await this.resolveAiGatewaySecret();
@@ -5348,7 +5520,41 @@ const StorageLayer = (() => {
             'content-type': 'application/json',
             ...(secret ? { 'x-gateway-secret': secret } : {}),
           },
-          body: JSON.stringify({ mode: 'interview', provider: 'auto', context: { goal_sentence: goalSentence } }),
+          body: JSON.stringify({ mode: 'interview', provider: 'auto', context: { history } }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+          return fail((data.error && data.error.message) || 'خطای Gateway.', 'GATEWAY_ERROR');
+        }
+        return ok(data.data);
+      } catch (e) {
+        return fail('خطا در ارتباط با Gateway: ' + (e.message || 'نامشخص'), 'NETWORK_ERROR');
+      }
+    },
+
+    /** فراخوانی واقعی Gateway برای دستیار زمان‌بندی لحظه‌ای (اسپرینت Personal Mastery · مود چهارم) */
+    async requestScheduleDraft(sentence, dateContext, projectsList) {
+      const url = localStorage.getItem(PREF_PREFIX + 'ai_gateway_url');
+      if (!url) return fail('ابتدا از Settings به AI Gateway وصل شوید.', 'NOT_CONNECTED');
+      const secret = await this.resolveAiGatewaySecret();
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(secret ? { 'x-gateway-secret': secret } : {}),
+          },
+          body: JSON.stringify({
+            mode: 'schedule',
+            provider: 'auto',
+            context: {
+              sentence,
+              today_gregorian: dateContext.today_gregorian,
+              today_jalali: dateContext.today_jalali,
+              today_weekday: dateContext.today_weekday,
+              projects: projectsList,
+            },
+          }),
         });
         const data = await resp.json();
         if (!resp.ok || !data.success) {
@@ -5419,6 +5625,12 @@ const StorageLayer = (() => {
       await hydrateCache();
       return ok(report);
     },
+
+    /** دسترسی کنترل‌شده به Supabase Client فعال — برای عملیات خارج از CRUD معمول (مثل Storage آپلود فایل). */
+    getSupabaseClient() { return getClient(); },
+
+    /** owner_id ثابت کاربر اول — برای ساخت مسیر Storage هم‌راستا با Policy owner_full_access_*. */
+    getOwnerId() { return OWNER_ID; },
   };
 })();
 
@@ -5440,6 +5652,13 @@ const ICONS = {
   'folder-kanban': '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/><line x1="8" y1="10" x2="8" y2="16"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="16" y1="10" x2="16" y2="17"/>',
   'library': '<rect x="3" y="6" width="4" height="14" rx="1"/><rect x="10" y="4" width="4" height="16" rx="1"/><rect x="17" y="8" width="4" height="12" rx="1"/>',
   'sparkles': '<path d="M12 2 C12.6 6.5 13.5 9 18 9.6 C13.5 10.2 12.6 12.7 12 17.2 C11.4 12.7 10.5 10.2 6 9.6 C10.5 9 11.4 6.5 12 2 Z"/><path d="M18 14 C18.3 15.7 18.8 16.6 20.5 16.9 C18.8 17.2 18.3 18.1 18 19.8 C17.7 18.1 17.2 17.2 15.5 16.9 C17.2 16.6 17.7 15.7 18 14 Z"/>',
+  'upload': '<path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  'loader': '<line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.9" y1="4.9" x2="7.7" y2="7.7"/><line x1="16.3" y1="16.3" x2="19.1" y2="19.1"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.9" y1="19.1" x2="7.7" y2="16.3"/><line x1="16.3" y1="7.7" x2="19.1" y2="4.9"/>',
+  'paperclip': '<path d="M21 12.5 12.5 21a5 5 0 0 1-7-7L14 5.5a3.5 3.5 0 0 1 5 5L10.5 19a2 2 0 0 1-3-3L15 8.5"/>',
+  'file-text': '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2Z"/><path d="M14 2v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/>',
+  'presentation': '<path d="M3 4h18"/><path d="M4 4v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V4"/><path d="M12 15v5"/><path d="M8 20h8"/>',
+  'help-circle': '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5"/><line x1="12" y1="17.2" x2="12" y2="17.2"/>',
+  'mic': '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="8" y1="22" x2="16" y2="22"/>',
   'bot': '<rect x="5" y="9" width="14" height="10" rx="2.5"/><circle cx="9.5" cy="14" r="1.3"/><circle cx="14.5" cy="14" r="1.3"/><line x1="12" y1="4" x2="12" y2="9"/><circle cx="12" cy="3" r="1.3"/><line x1="2" y1="13" x2="5" y2="13"/><line x1="19" y1="13" x2="22" y2="13"/>',
   'book-open': '<path d="M2 6c3-1.5 6-1.5 10 0v14c-4-1.5-7-1.5-10 0Z"/><path d="M22 6c-3-1.5-6-1.5-10 0v14c4-1.5 7-1.5 10 0Z"/>',
   'notebook-pen': '<rect x="4" y="3" width="14" height="18" rx="2"/><line x1="4" y1="8" x2="1.5" y2="8"/><line x1="4" y1="13" x2="1.5" y2="13"/><line x1="4" y1="18" x2="1.5" y2="18"/><path d="M14 12 20 6l2 2-6 6-2.5.5Z"/>',
@@ -5897,17 +6116,23 @@ function app() {
     resourceModalOpen: false,
     resourceModalMode: 'create',  // 'create' | 'edit'
     editingResourceId: null,
-    resourceForm: { title: '', description: '', type: 'Book', url: '', author: '', tags: [], status: 'Draft', version: 'v1', project_id: null },
+    resourceForm: { title: '', description: '', type: 'Handout', url: '', author: '', tags: [], status: 'Draft', version: 'v1', project_id: null, storage_path: '' },
     resourceFormError: '',
     resourceTagInput: '',
+    resourceUploading: false,
+    resourceUploadError: '',
 
     resourceTypeOptions: [
-      { value: 'Book',       label: 'کتاب',      icon: 'book-open' },
-      { value: 'Article',    label: 'مقاله',     icon: 'file' },
-      { value: 'Video',      label: 'ویدیو',     icon: 'video' },
-      { value: 'Course',     label: 'دوره',      icon: 'graduation-cap' },
-      { value: 'Repository', label: 'مخزن کد',   icon: 'code' },
-      { value: 'Other',      label: 'سایر',      icon: 'more-horizontal' },
+      { value: 'Handout',        label: 'جزوه',          icon: 'file-text' },
+      { value: 'Book',           label: 'کتاب/رفرنس',   icon: 'book-open' },
+      { value: 'Slides',         label: 'پاور استاد',    icon: 'presentation' },
+      { value: 'SampleQuestions', label: 'نمونه سوال',   icon: 'help-circle' },
+      { value: 'Video',          label: 'ویدیو آموزشی', icon: 'video' },
+      { value: 'VoiceNote',      label: 'ویس استاد',     icon: 'mic' },
+      { value: 'Article',        label: 'مقاله',         icon: 'file' },
+      { value: 'Course',         label: 'دوره',          icon: 'graduation-cap' },
+      { value: 'Repository',     label: 'مخزن کد',       icon: 'code' },
+      { value: 'Other',          label: 'سایر',          icon: 'more-horizontal' },
     ],
 
     /* ====================================================================
@@ -6640,64 +6865,91 @@ function app() {
     },
 
     /* ====================================================================
-       زیرفاز 1.5-ج (سند 012) — AI Interview (مود سوم Gateway)
-       جریان: یک جمله هدف → Draft 0 (هدف + پروژه + حداکثر ۵ تسک) → مودال
-       قابل‌ویرایش → فقط پس از تأیید صریح، ساخت رکوردها (Human in Control).
-       Draft 0 عمداً ماندگار نیست (Trade-off آگاهانه سند 012): بستن مودال = از بین رفتن پیش‌نویس.
+       AI Interview گفتگومحور (سند 012 نسخه 1.4 — ارتقا از تک‌ضربه‌ای، مود سوم Gateway)
+       جریان: کاربر یک هدف کلی می‌نویسد → تا وقتی جزئیات کافی نیست (بازه زمانی،
+       فازها، ددلاین‌ها) AI سؤال می‌پرسد → وقتی کافی شد Draft نهایی
+       {Goal + چند Project فازبندی‌شده + Taskهای تاریخ‌دار} → مودال قابل‌ویرایش
+       → فقط پس از تأیید صریح، ساخت رکوردها (Human in Control).
+       Draft عمداً ماندگار نیست (Trade-off آگاهانه سند 012): بستن مودال = از بین رفتن پیش‌نویس.
        ==================================================================== */
 
     interview: {
       open: false,
-      stage: 'input',   // 'input' | 'loading' | 'edit'
+      stage: 'chat',   // 'chat' (ورودی/گفتگو) | 'loading' | 'edit'
+      history: [],     // [{role:'user'|'assistant', content}]
       sentence: '',
       error: '',
-      draft: null,      // {goal:{title,reason,success_metric}, project:{title,description}, tasks:[{title,priority}]}
+      draft: null,     // {goal:{title,reason,success_metric}, projects:[{title,description,tasks:[{title,priority,due_date,planned_date}]}]}
       provider: '',
       saving: false,
     },
 
     openInterview() {
-      this.interview = { open: true, stage: 'input', sentence: '', error: '', draft: null, provider: '', saving: false };
+      this.interview = { open: true, stage: 'chat', history: [], sentence: '', error: '', draft: null, provider: '', saving: false };
     },
 
     closeInterview() {
-      // طبق سند 012: رد یا بستن مودال → هیچ رکوردی ساخته نمی‌شود و پیش‌نویس از بین می‌رود
-      this.interview = { open: false, stage: 'input', sentence: '', error: '', draft: null, provider: '', saving: false };
+      // طبق سند 012: رد یا بستن مودال → هیچ رکوردی ساخته نمی‌شود و پیش‌نویس/تاریخچه از بین می‌رود
+      this.interview = { open: false, stage: 'chat', history: [], sentence: '', error: '', draft: null, provider: '', saving: false };
+    },
+
+    /** پرسش‌های AI که تا این لحظه در گفتگو مطرح شده‌اند — برای نمایش رونوشت گفتگو در مودال */
+    get interviewAssistantQuestions() {
+      return this.interview.history.filter(m => m.role === 'assistant');
     },
 
     async submitInterviewSentence() {
       const sentence = this.interview.sentence.trim();
-      if (!sentence) { this.interview.error = 'یک جمله درباره هدفت بنویس.'; return; }
+      if (!sentence) { this.interview.error = 'یک پیام بنویس.'; return; }
       this.interview.error = '';
+      this.interview.history.push({ role: 'user', content: sentence });
+      this.interview.sentence = '';
       this.interview.stage = 'loading';
-      const res = await StorageLayer.requestInterviewDraft(sentence);
+      const res = await StorageLayer.requestInterviewDraft(this.interview.history);
       if (!res.success) {
-        this.interview.stage = 'input';
+        this.interview.stage = 'chat';
         this.interview.error = res.error.message;
         return;
       }
+      if (res.data.status === 'question') {
+        this.interview.history.push({ role: 'assistant', content: res.data.question });
+        this.interview.provider = res.data.provider || '';
+        this.interview.stage = 'chat';
+        return;
+      }
+      // status === 'draft'
       this.interview.draft = res.data.draft;
       this.interview.provider = res.data.provider || '';
       this.interview.stage = 'edit';
     },
 
-    removeInterviewTask(idx) {
-      this.interview.draft.tasks.splice(idx, 1);
+    addInterviewProject() {
+      this.interview.draft.projects.push({ title: '', description: '', tasks: [] });
+    },
+
+    removeInterviewProject(pIdx) {
+      this.interview.draft.projects.splice(pIdx, 1);
+    },
+
+    addInterviewTask(pIdx) {
+      this.interview.draft.projects[pIdx].tasks.push({ title: '', priority: 'Medium', due_date: null, planned_date: null });
+    },
+
+    removeInterviewTask(pIdx, tIdx) {
+      this.interview.draft.projects[pIdx].tasks.splice(tIdx, 1);
     },
 
     /** ساخت اتمیک پس از تأیید صریح کاربر — طبق الگوی تبدیل InboxItem (سند 005).
         StorageLayer تراکنش واقعی ندارد؛ اتمیک‌بودن با Rollback دستی شبیه‌سازی می‌شود:
-        اگر هر مرحله شکست بخورد، رکوردهای ساخته‌شده با حذف سخت (hard) پاک می‌شوند
-        (حذف سخت چون این رکوردها هنوز «داده واقعی کاربر» نشده‌اند). */
+        اگر هر مرحله شکست بخورد، رکوردهای ساخته‌شده (همه Projectها و Taskهای تا این لحظه) با
+        حذف سخت (hard) پاک می‌شوند (حذف سخت چون این رکوردها هنوز «داده واقعی کاربر» نشده‌اند). */
     confirmInterviewDraft() {
       const d = this.interview.draft;
       if (!d) return;
       const goalTitle = (d.goal.title || '').trim();
-      const projectTitle = (d.project.title || '').trim();
-      const tasks = d.tasks.filter(t => (t.title || '').trim());
+      const projectsInput = (d.projects || []).filter(p => (p.title || '').trim());
       if (!goalTitle) { this.interview.error = 'عنوان هدف الزامی است.'; return; }
-      if (!projectTitle) { this.interview.error = 'عنوان پروژه الزامی است.'; return; }
-      if (!tasks.length) { this.interview.error = 'حداقل یک تسک لازم است.'; return; }
+      if (!projectsInput.length) { this.interview.error = 'حداقل یک پروژه لازم است.'; return; }
       this.interview.error = '';
       this.interview.saving = true;
 
@@ -6713,57 +6965,162 @@ function app() {
       });
       if (!goalRes.success) { this.interview.saving = false; this.interview.error = goalRes.error.message; return; }
 
-      const projectRes = StorageLayer.create('projects', {
-        title: projectTitle,
-        description: (d.project.description || '').trim(),
-        status: 'Active',
-        priority: 'Medium',
-        version: 'v1',
-        tags: [],
-        goal_id: goalRes.data.id,
-      });
-      if (!projectRes.success) {
-        StorageLayer.remove('goals', goalRes.data.id, { hard: true });
-        this.interview.saving = false;
-        this.interview.error = projectRes.error.message;
-        return;
-      }
-
+      const createdProjectIds = [];
       const createdTaskIds = [];
-      for (const t of tasks) {
-        const taskRes = StorageLayer.create('tasks', {
-          project_id: projectRes.data.id,
-          title: t.title.trim(),
-          description: '',
-          status: 'Todo',
-          priority: t.priority || 'Medium',
-          difficulty: 'Medium',
-          due_date: null,
-          estimate_minutes: null,
-          spent_minutes: null,
-          checklist: [],
-          dependencies: [],
-          related_files: [],
-          related_prompt: null,
+      const rollbackAll = () => {
+        createdTaskIds.forEach(id => StorageLayer.remove('tasks', id, { hard: true }));
+        createdProjectIds.forEach(id => StorageLayer.remove('projects', id, { hard: true }));
+        StorageLayer.remove('goals', goalRes.data.id, { hard: true });
+      };
+
+      for (const p of projectsInput) {
+        const projectRes = StorageLayer.create('projects', {
+          title: p.title.trim(),
+          description: (p.description || '').trim(),
+          status: 'Active',
+          priority: 'Medium',
+          version: 'v1',
+          tags: [],
+          goal_id: goalRes.data.id,
         });
-        if (!taskRes.success) {
-          createdTaskIds.forEach(id => StorageLayer.remove('tasks', id, { hard: true }));
-          StorageLayer.remove('projects', projectRes.data.id, { hard: true });
-          StorageLayer.remove('goals', goalRes.data.id, { hard: true });
+        if (!projectRes.success) {
+          rollbackAll();
           this.interview.saving = false;
-          this.interview.error = taskRes.error.message;
+          this.interview.error = projectRes.error.message;
           return;
         }
-        createdTaskIds.push(taskRes.data.id);
+        createdProjectIds.push(projectRes.data.id);
+
+        const tasks = (p.tasks || []).filter(t => (t.title || '').trim());
+        for (const t of tasks) {
+          const taskRes = StorageLayer.create('tasks', {
+            project_id: projectRes.data.id,
+            title: t.title.trim(),
+            description: '',
+            status: 'Todo',
+            priority: t.priority || 'Medium',
+            difficulty: 'Medium',
+            due_date: t.due_date || null,
+            planned_date: t.planned_date || null,
+            estimate_minutes: null,
+            spent_minutes: null,
+            checklist: [],
+            dependencies: [],
+            related_files: [],
+            related_prompt: null,
+          });
+          if (!taskRes.success) {
+            rollbackAll();
+            this.interview.saving = false;
+            this.interview.error = taskRes.error.message;
+            return;
+          }
+          createdTaskIds.push(taskRes.data.id);
+        }
       }
 
       this.interview.saving = false;
       this.closeInterview();
       this.loadGoals();
       this.loadProjects();
-      this.showToast('هدف، پروژه و ' + createdTaskIds.length + ' تسک ساخته شد.');
+      this.loadTasks();
+      this.showToast('هدف، ' + createdProjectIds.length + ' پروژه و ' + createdTaskIds.length + ' تسک ساخته شد.');
       this.bumpDashRefresh();
       this.currentView = 'goals';
+    },
+
+    /* ====================================================================
+       دستیار زمان‌بندی (اسپرینت Personal Mastery — مود چهارم Gateway، بند ۳)
+       جریان: یک جملهٔ لحظه‌ای → پیش‌نویس Task (planned_date + احتمالاً start/end_time)
+       → مودال قابل‌ویرایش → فقط پس از تأیید صریح، Task واقعی ساخته می‌شود
+       (Human in Control — همون اصل AI Interview). Draft ماندگار نیست.
+       ==================================================================== */
+
+    scheduler: {
+      open: false,
+      stage: 'input',   // 'input' | 'loading' | 'confirm'
+      sentence: '',
+      error: '',
+      draft: null,      // {title, planned_date, start_time, end_time, project_id, priority}
+      provider: '',
+      saving: false,
+    },
+
+    openScheduler() {
+      this.scheduler = { open: true, stage: 'input', sentence: '', error: '', draft: null, provider: '', saving: false };
+    },
+
+    closeScheduler() {
+      this.scheduler = { open: false, stage: 'input', sentence: '', error: '', draft: null, provider: '', saving: false };
+    },
+
+    /** شروع دستیار زمان‌بندی از باکس کوچک داشبورد — همون مودال submitSchedulerSentence را باز می‌کند. */
+    quickScheduleFromDashboard() {
+      if (!this.scheduler.sentence.trim()) return;
+      this.scheduler.open = true;
+      this.scheduler.stage = 'input';
+      this.scheduler.error = '';
+      this.submitSchedulerSentence();
+    },
+
+    async submitSchedulerSentence() {
+      const sentence = this.scheduler.sentence.trim();
+      if (!sentence) { this.scheduler.error = 'یک جمله دربارهٔ کار یا جلسه بنویس.'; return; }
+      this.scheduler.error = '';
+      this.scheduler.stage = 'loading';
+      const todayStr = this.todayDateString();
+      const j = this.currentJalali();
+      const dateContext = {
+        today_gregorian: todayStr,
+        today_jalali: j.jy + '-' + String(j.jm).padStart(2, '0') + '-' + String(j.jd).padStart(2, '0'),
+        today_weekday: this.jalaliWeekday(todayStr),
+      };
+      const projectsList = this.projects.map(p => ({ id: p.id, title: p.title }));
+      const res = await StorageLayer.requestScheduleDraft(sentence, dateContext, projectsList);
+      if (!res.success) {
+        this.scheduler.stage = 'input';
+        this.scheduler.error = res.error.message;
+        return;
+      }
+      this.scheduler.draft = res.data.draft;
+      this.scheduler.provider = res.data.provider || '';
+      this.scheduler.stage = 'confirm';
+    },
+
+    confirmSchedulerDraft() {
+      const d = this.scheduler.draft;
+      if (!d) return;
+      const title = (d.title || '').trim();
+      if (!title) { this.scheduler.error = 'عنوان الزامی است.'; return; }
+      if (!d.planned_date) { this.scheduler.error = 'تاریخ برنامه الزامی است.'; return; }
+      this.scheduler.error = '';
+      this.scheduler.saving = true;
+
+      const taskRes = StorageLayer.create('tasks', {
+        project_id: d.project_id || null,
+        title,
+        description: '',
+        status: 'Todo',
+        priority: d.priority || 'Medium',
+        difficulty: 'Medium',
+        due_date: null,
+        planned_date: d.planned_date,
+        start_time: d.start_time || null,
+        end_time: d.end_time || null,
+        estimate_minutes: null,
+        spent_minutes: null,
+        checklist: [],
+        dependencies: [],
+        related_files: [],
+        related_prompt: null,
+      });
+      this.scheduler.saving = false;
+      if (!taskRes.success) { this.scheduler.error = taskRes.error.message; return; }
+
+      this.closeScheduler();
+      this.loadTasks();
+      this.bumpDashRefresh();
+      this.showToast('«' + title + '» به برنامهٔ ' + this.jalaliFullLabel(d.planned_date) + ' اضافه شد.');
     },
 
     askDeleteGoal(goal) {
@@ -7364,11 +7721,12 @@ function app() {
       this.resourceModalMode = 'create';
       this.editingResourceId = null;
       this.resourceForm = {
-        title: '', description: '', type: 'Book', url: '', author: '',
-        tags: [], status: 'Draft', version: 'v1', project_id: presetProjectId || null,
+        title: '', description: '', type: 'Handout', url: '', author: '',
+        tags: [], status: 'Draft', version: 'v1', project_id: presetProjectId || null, storage_path: '',
       };
       this.resourceTagInput = '';
       this.resourceFormError = '';
+      this.resourceUploadError = '';
       this.resourceModalOpen = true;
     },
 
@@ -7378,16 +7736,18 @@ function app() {
       this.resourceForm = {
         title: resource.title,
         description: resource.description || '',
-        type: resource.type || 'Book',
+        type: resource.type || 'Handout',
         url: resource.url || '',
         author: resource.author || '',
         tags: [...(resource.tags || [])],
         status: resource.status || 'Draft',
         version: resource.version || 'v1',
         project_id: resource.project_id || null,
+        storage_path: resource.storage_path || '',
       };
       this.resourceTagInput = '';
       this.resourceFormError = '';
+      this.resourceUploadError = '';
       this.resourceModalOpen = true;
     },
 
@@ -7399,6 +7759,57 @@ function app() {
 
     removeResourceTag(tag) {
       this.resourceForm.tags = this.resourceForm.tags.filter(t => t !== tag);
+    },
+
+    /** آپلود فایل Resource روی Supabase Storage (bucket: resource-files) — بند ۱/۲ اسپرینت Personal Mastery
+        بدون محدودیت نوع فایل (تصمیم کاربر اول)؛ سقف عملی حجم هر فایل طبق پلن رایگان Supabase تقریباً ۵۰ مگابایت است.
+        مسیر ذخیره: <OWNER_ID>/<uuid تصادفی>/<نام فایل> — هم‌راستا با Policy owner_full_access_resource_files. */
+    async uploadResourceFile(event) {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      const client = StorageLayer.getSupabaseClient();
+      if (!client) { this.resourceUploadError = 'ابتدا از Settings به Supabase وصل شوید.'; return; }
+      this.resourceUploading = true;
+      this.resourceUploadError = '';
+      try {
+        const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF ]/g, '_');
+        const randomSeg = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+          : Date.now().toString(36) + Math.random().toString(36).slice(2);
+        const path = StorageLayer.getOwnerId() + '/' + randomSeg + '/' + safeName;
+        const { error } = await client.storage.from('resource-files').upload(path, file, { upsert: false });
+        if (error) throw error;
+        this.resourceForm.storage_path = path;
+      } catch (e) {
+        this.resourceUploadError = 'آپلود ناموفق بود: ' + (e.message || 'خطای نامشخص') + ' (حجم مجاز هر فایل معمولاً حداکثر ۵۰ مگابایت است.)';
+      } finally {
+        this.resourceUploading = false;
+      }
+    },
+
+    removeUploadedResourceFile() {
+      this.resourceForm.storage_path = '';
+      this.resourceUploadError = '';
+    },
+
+    resourceFileName(storagePath) {
+      if (!storagePath) return '';
+      const parts = String(storagePath).split('/');
+      return parts[parts.length - 1];
+    },
+
+    /** بازکردن فایل آپلودشدهٔ Resource با Signed URL موقت (Bucket خصوصی است)؛ در نبود فایل، لینک خارجی url باز می‌شود. */
+    async openResourceFile(resource) {
+      if (resource.storage_path) {
+        const client = StorageLayer.getSupabaseClient();
+        if (!client) { this.showToast('ابتدا از Settings به Supabase وصل شوید.'); return; }
+        const { data, error } = await client.storage.from('resource-files').createSignedUrl(resource.storage_path, 3600);
+        if (error || !data) { this.showToast('باز کردن فایل ناموفق بود: ' + (error ? error.message : 'خطای نامشخص')); return; }
+        window.open(data.signedUrl, '_blank', 'noopener');
+        return;
+      }
+      if (resource.url) { window.open(resource.url, '_blank', 'noopener'); return; }
+      this.showToast('برای این Resource نه فایلی آپلود شده و نه لینکی ثبت شده.');
     },
 
     saveResource() {
@@ -7416,6 +7827,7 @@ function app() {
         status: this.resourceForm.status,
         version: this.resourceForm.version.trim() || 'v1',
         project_id: this.resourceForm.project_id || null,
+        storage_path: this.resourceForm.storage_path || null,
       };
 
       const res = this.resourceModalMode === 'create'
