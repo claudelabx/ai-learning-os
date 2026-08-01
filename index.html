@@ -2513,6 +2513,139 @@
     </div>
   </section>
 
+  <!-- ---------- RESOURCE BOXES (کتابخانهٔ منابع — دسته‌بندی موضوعی، جدا از ماژول Resources قدیمی) ---------- -->
+  <section class="view" x-show="currentView === 'resource-boxes'" x-cloak>
+
+    <!-- ===== فهرست باکس‌ها ===== -->
+    <template x-if="boxView === 'list'">
+      <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
+        <div class="module-toolbar">
+          <div>
+            <h1>کتابخانهٔ منابع</h1>
+            <p class="subtitle">منابعت رو دسته‌بندی موضوعی کن — هر باکس یک موضوع مستقل (درس، المپیاد، هر چیز دیگه).</p>
+          </div>
+          <button class="btn btn-primary" @click="openCreateBox()">
+            <span x-html="icon('plus')"></span>
+            <span>باکس جدید</span>
+          </button>
+        </div>
+
+        <template x-if="resourceBoxes.length === 0">
+          <div class="card">
+            <div class="empty-state" style="padding-block:var(--space-xxl);">
+              <div class="icon-wrap" x-html="icon('library')"></div>
+              <strong>هنوز باکسی نساختی</strong>
+              <p>یک باکس بساز، بعد منابعش رو داخلش اضافه کن.</p>
+              <div class="empty-actions">
+                <button class="btn btn-primary" @click="openCreateBox()"><span x-html="icon('plus')"></span><span>اولین باکس را بساز</span></button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div class="project-grid" x-show="resourceBoxes.length > 0">
+          <template x-for="box in sortedResourceBoxes" :key="box.id">
+            <div class="card project-card" @click="openBox(box)">
+              <div class="project-card-top">
+                <h3 class="project-card-title" x-text="box.title"></h3>
+                <div class="project-card-actions" @click.stop>
+                  <button class="mini-icon-btn" @click="openEditBox(box)" title="ویرایش باکس" aria-label="ویرایش باکس">
+                    <span x-html="icon('pencil')"></span>
+                  </button>
+                  <button class="mini-icon-btn danger" @click="askDeleteBox(box)" title="حذف باکس" aria-label="حذف باکس">
+                    <span x-html="icon('trash-2')"></span>
+                  </button>
+                </div>
+              </div>
+              <p class="project-card-desc" x-text="box.description || 'بدون توضیح'"></p>
+              <div class="project-card-badges">
+                <span class="badge badge-progress">
+                  <span x-html="icon('book-open')"></span>
+                  <span class="en" x-text="resourcesForBox(box.id).length"></span>
+                  <span>منبع</span>
+                </span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== داخل یک باکس ===== -->
+    <template x-if="boxView === 'detail' && activeBox">
+      <div style="display:flex; flex-direction:column; gap:var(--space-l);">
+        <button class="back-link" @click="backToBoxes()">
+          <span x-html="icon('chevron-right')"></span>
+          <span>بازگشت به باکس‌ها</span>
+        </button>
+
+        <div class="module-toolbar">
+          <div>
+            <h1 x-text="activeBox.title"></h1>
+            <p class="subtitle" x-text="activeBox.description || 'بدون توضیح'"></p>
+          </div>
+          <button class="btn btn-primary" @click="openCreateBoxResource()">
+            <span x-html="icon('plus')"></span>
+            <span>منبع جدید</span>
+          </button>
+        </div>
+
+        <template x-if="resourcesForBox(activeBoxId).length === 0">
+          <div class="card">
+            <div class="empty-state" style="padding-block:var(--space-xxl);">
+              <div class="icon-wrap" x-html="icon('book-open')"></div>
+              <strong>هنوز منبعی در این باکس نیست</strong>
+              <p>جزوه، لینک، ویدیو یا هر منبعی که داری، همین‌جا اضافه کن.</p>
+              <div class="empty-actions">
+                <button class="btn btn-primary" @click="openCreateBoxResource()"><span x-html="icon('plus')"></span><span>اولین منبع را ثبت کن</span></button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div class="note-grid" x-show="resourcesForBox(activeBoxId).length > 0">
+          <template x-for="resource in resourcesForBox(activeBoxId)" :key="resource.id">
+            <div class="card note-card" @click="openEditBoxResource(resource)">
+              <div class="note-card-top">
+                <div class="resource-card-title-group">
+                  <span class="resource-type-icon"><span x-html="icon(resourceTypeMeta(resource.type).icon)"></span></span>
+                  <h3 class="note-card-title" x-text="resource.title"></h3>
+                </div>
+                <div class="note-card-actions" @click.stop>
+                  <button class="mini-icon-btn" x-show="resource.storage_path || resource.url" @click="openResourceFile(resource)" title="باز کردن فایل/لینک" aria-label="باز کردن فایل یا لینک">
+                    <span x-html="icon('paperclip')"></span>
+                  </button>
+                  <button class="mini-icon-btn" @click="openEditBoxResource(resource)" title="ویرایش" aria-label="ویرایش منبع">
+                    <span x-html="icon('pencil')"></span>
+                  </button>
+                  <button class="mini-icon-btn danger" @click="askDeleteBoxResource(resource)" title="حذف" aria-label="حذف منبع">
+                    <span x-html="icon('trash-2')"></span>
+                  </button>
+                </div>
+              </div>
+
+              <p class="note-card-preview" x-show="resource.description" x-text="resource.description"></p>
+              <p class="resource-card-author" x-show="resource.author">
+                <span x-html="icon('user')"></span>
+                <span x-text="resource.author"></span>
+              </p>
+
+              <div class="note-card-badges">
+                <span class="badge badge-progress">
+                  <span x-html="icon(resourceTypeMeta(resource.type).icon)"></span>
+                  <span x-text="resourceTypeMeta(resource.type).label"></span>
+                </span>
+                <template x-for="tag in resource.tags" :key="tag">
+                  <span class="badge badge-muted" x-text="tag"></span>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </section>
+
   <!-- ---------- JOURNAL ---------- -->
   <section class="view" x-show="currentView === 'journal'" x-cloak>
     <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
@@ -4072,6 +4205,136 @@
   </div>
 </div>
 
+<!-- ===== مودال باکس (کتابخانهٔ منابع) ===== -->
+<div class="modal-overlay" x-show="boxModalOpen" x-cloak x-transition @keydown.escape.window="boxModalOpen = false">
+  <div class="modal modal-sm" @click.outside="boxModalOpen = false" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2 x-text="boxModalMode === 'create' ? 'باکس جدید' : 'ویرایش باکس'"></h2>
+        <p>یک دسته‌بندی موضوعی برای منابعت — مثلاً یک درس، المپیاد، یا هر موضوع دیگر.</p>
+      </div>
+      <button class="icon-btn" @click="boxModalOpen = false" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="bf-title">عنوان</label>
+        <input id="bf-title" class="form-input" :class="{invalid: boxFormError}" type="text" x-model="boxForm.title" placeholder="مثلاً: فیزیولوژی">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="bf-desc">توضیح <span class="optional">(اختیاری)</span></label>
+        <textarea id="bf-desc" class="form-textarea" x-model="boxForm.description"></textarea>
+      </div>
+      <p class="form-error" x-show="boxFormError" x-text="boxFormError"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="boxModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="saveBox()">
+        <span x-text="boxModalMode === 'create' ? 'ایجاد باکس' : 'ذخیره تغییرات'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== مودال Resource ساده‌شده — داخل یک باکس (فقط عنوان/نوع/نویسنده/برچسب/فایل‌یا‌لینک/توضیح) ===== -->
+<div class="modal-overlay" x-show="boxResourceModalOpen" x-cloak x-transition @keydown.escape.window="boxResourceModalOpen = false">
+  <div class="modal" @click.outside="boxResourceModalOpen = false" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2 x-text="boxResourceModalMode === 'create' ? 'منبع جدید' : 'ویرایش منبع'"></h2>
+        <p x-text="'داخل باکس: ' + (activeBox ? activeBox.title : '')"></p>
+      </div>
+      <button class="icon-btn" @click="boxResourceModalOpen = false" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="bxr-title">عنوان <span class="optional">(الزامی)</span></label>
+        <input id="bxr-title" class="form-input" :class="{invalid: boxResourceFormError}" type="text" x-model="boxResourceForm.title">
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="bxr-type">نوع</label>
+          <select id="bxr-type" class="form-select" x-model="boxResourceForm.type">
+            <template x-for="opt in resourceTypeOptions" :key="opt.value">
+              <option :value="opt.value" x-text="opt.label"></option>
+            </template>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="bxr-author">نویسنده/سازنده <span class="optional">(اختیاری)</span></label>
+          <input id="bxr-author" class="form-input" type="text" x-model="boxResourceForm.author">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="bxr-url">لینک/URL <span class="optional">(اختیاری — جدا از فایل زیر)</span></label>
+        <input id="bxr-url" class="form-input en" style="direction:ltr; text-align:left;" type="url" x-model="boxResourceForm.url" placeholder="https://…">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">فایل <span class="optional">(اختیاری)</span></label>
+        <template x-if="!boxResourceForm.storage_path">
+          <div>
+            <input type="file" id="bxr-file-input" style="display:none" @change="uploadBoxResourceFile($event)">
+            <button type="button" class="btn btn-secondary" :disabled="boxResourceUploading" @click="document.getElementById('bxr-file-input').click()">
+              <span :class="{spin: boxResourceUploading}" x-html="icon(boxResourceUploading ? 'loader' : 'upload')"></span>
+              <span x-text="boxResourceUploading ? 'در حال آپلود…' : 'انتخاب و آپلود فایل'"></span>
+            </button>
+          </div>
+        </template>
+        <template x-if="boxResourceForm.storage_path">
+          <div class="tag-field" style="justify-content:space-between;">
+            <span style="display:flex; align-items:center; gap:6px;">
+              <span x-html="icon('paperclip')"></span>
+              <span x-text="resourceFileName(boxResourceForm.storage_path)"></span>
+            </span>
+            <button type="button" class="mini-icon-btn danger" @click="removeUploadedBoxResourceFile()" title="حذف فایل" aria-label="حذف فایل انتخاب‌شده">
+              <span x-html="icon('x')"></span>
+            </button>
+          </div>
+        </template>
+        <p class="form-error" x-show="boxResourceUploadError" x-text="boxResourceUploadError"></p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="bxr-desc">توضیحات <span class="optional">(اختیاری)</span></label>
+        <textarea id="bxr-desc" class="form-textarea" x-model="boxResourceForm.description"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
+        <div class="tag-field">
+          <template x-for="tag in boxResourceForm.tags" :key="tag">
+            <span class="tag-chip">
+              <span x-text="tag"></span>
+              <button type="button" @click="removeBoxResourceTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button>
+            </span>
+          </template>
+          <input type="text" x-model="boxResourceTagInput" placeholder="برچسب…" @keydown.enter.prevent="addBoxResourceTag()">
+        </div>
+      </div>
+
+      <p class="form-error" x-show="boxResourceFormError" x-text="boxResourceFormError"></p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary footer-start" x-show="boxResourceModalMode === 'edit'" @click="boxResourceModalOpen = false; askDeleteBoxResource({ id: editingBoxResourceId, title: boxResourceForm.title });">
+        <span x-html="icon('trash-2')"></span>
+        <span>حذف</span>
+      </button>
+      <button class="btn btn-secondary" @click="boxResourceModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="saveBoxResource()">
+        <span x-text="boxResourceModalMode === 'create' ? 'ایجاد منبع' : 'ذخیره تغییرات'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- =====================================================================
      JOURNAL MODAL — Create / Edit (ماژول Journal)
      منبع فیلدها: 005 (Base Entity) + 002 (نقش ماژول) — Mood/TimeLog/AI-Discussions
@@ -5009,13 +5272,13 @@ const StorageLayer = (() => {
   const ALL_COLLECTIONS = [
     'projects', 'roadmaps', 'modules', 'lessons', 'tasks', 'practices',
     'time_logs', 'chats', 'notes', 'prompts', 'resources', 'journal', 'goals',
-    'inbox_items',
+    'inbox_items', 'resource_boxes',
   ];
   const ENTITY_TYPE_BY_COLLECTION = {
     projects: 'project', tasks: 'task', time_logs: 'time_log', roadmaps: 'roadmap',
     modules: 'module', lessons: 'lesson', practices: 'practice', notes: 'note',
     prompts: 'prompt', chats: 'chat', resources: 'resource', journal: 'journal',
-    goals: 'goal', inbox_items: 'inbox_item',
+    goals: 'goal', inbox_items: 'inbox_item', resource_boxes: 'resource_box',
   };
 
   function ok(data) {
@@ -5913,6 +6176,7 @@ function app() {
       { id: 'prompt-hub', label: 'پرامپت‌ها',         icon: 'sparkles',         disabled: false, phase: '' },
       { id: 'ai-chats',   label: 'گفتگوهای AI',       icon: 'bot',              disabled: false, phase: '' },
       { id: 'resources',  label: 'منابع',              icon: 'book-open',       disabled: false, phase: '' },
+      { id: 'resource-boxes', label: 'کتابخانهٔ منابع', icon: 'library',       disabled: false, phase: '' },
       { id: 'journal',    label: 'ژورنال',             icon: 'notebook-pen',    disabled: false, phase: '' },
       { id: 'portfolio',  label: 'نمونه‌کار',          icon: 'briefcase',       disabled: false, phase: '' },
       { id: 'analytics',  label: 'تحلیل‌ها',           icon: 'bar-chart-3',    disabled: false, phase: '' },
@@ -5926,7 +6190,7 @@ function app() {
     navGroups: [
       { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'inbox', 'journal'] },
       { id: 'path',      label: 'مسیر',   moduleIds: ['goals', 'learning', 'projects'] },
-      { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge', 'prompt-hub', 'ai-chats', 'resources'] },
+      { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge', 'prompt-hub', 'ai-chats', 'resources', 'resource-boxes'] },
       { id: 'output',    label: 'خروجی',  moduleIds: ['portfolio', 'analytics'] },
     ],
 
@@ -6136,6 +6400,192 @@ function app() {
     ],
 
     /* ====================================================================
+       ماژول کتابخانهٔ منابع (باکس‌بندی موضوعی) — کاملاً جدا از ماژول Resources قدیمی
+       طبق تصمیم کاربر اول: Resources قدیمی (تب Resources هر پروژه) دست‌نخورده می‌ماند؛
+       این ماژول با دسته‌بندی موضوعی (باکس) و فرم ساده‌شده (بدون ورژن/وضعیت/پروژه) است.
+       ==================================================================== */
+    resourceBoxes: [],
+    boxView: 'list',        // 'list' | 'detail'
+    activeBoxId: null,
+
+    loadResourceBoxes() {
+      const res = StorageLayer.list('resource_boxes');
+      this.resourceBoxes = res.success ? res.data : [];
+    },
+
+    get sortedResourceBoxes() {
+      return [...this.resourceBoxes].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'fa'));
+    },
+
+    get activeBox() {
+      return this.resourceBoxes.find(b => b.id === this.activeBoxId) || null;
+    },
+
+    resourcesForBox(boxId) {
+      return this.resources
+        .filter(r => r.box_id === boxId)
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    },
+
+    openBox(box) {
+      this.activeBoxId = box.id;
+      this.boxView = 'detail';
+    },
+
+    backToBoxes() {
+      this.boxView = 'list';
+      this.activeBoxId = null;
+    },
+
+    boxModalOpen: false,
+    boxModalMode: 'create',  // 'create' | 'edit'
+    editingBoxId: null,
+    boxForm: { title: '', description: '' },
+    boxFormError: '',
+
+    openCreateBox() {
+      this.boxModalMode = 'create';
+      this.editingBoxId = null;
+      this.boxForm = { title: '', description: '' };
+      this.boxFormError = '';
+      this.boxModalOpen = true;
+    },
+
+    openEditBox(box) {
+      this.boxModalMode = 'edit';
+      this.editingBoxId = box.id;
+      this.boxForm = { title: box.title, description: box.description || '' };
+      this.boxFormError = '';
+      this.boxModalOpen = true;
+    },
+
+    saveBox() {
+      const title = this.boxForm.title.trim();
+      this.boxFormError = '';
+      if (!title) { this.boxFormError = 'عنوان باکس الزامی است.'; return; }
+      const payload = { title, description: this.boxForm.description.trim() };
+      const res = this.boxModalMode === 'create'
+        ? StorageLayer.create('resource_boxes', payload)
+        : StorageLayer.update('resource_boxes', this.editingBoxId, payload);
+      if (!res.success) { this.boxFormError = res.error.message; return; }
+      this.boxModalOpen = false;
+      this.loadResourceBoxes();
+      this.showToast(this.boxModalMode === 'create' ? 'باکس ایجاد شد.' : 'باکس به‌روزرسانی شد.');
+    },
+
+    askDeleteBox(box) {
+      this.deleteTarget = { type: 'resource_box', id: box.id, title: box.title };
+      this.confirmModalOpen = true;
+    },
+
+    // ---- فرم سادهٔ افزودن/ویرایش Resource داخل یک باکس — فقط: عنوان، نوع، نویسنده، برچسب، فایل/لینک، توضیح ----
+    boxResourceModalOpen: false,
+    boxResourceModalMode: 'create',
+    editingBoxResourceId: null,
+    boxResourceForm: { title: '', type: 'Handout', author: '', tags: [], url: '', storage_path: '', description: '' },
+    boxResourceFormError: '',
+    boxResourceTagInput: '',
+    boxResourceUploading: false,
+    boxResourceUploadError: '',
+
+    openCreateBoxResource() {
+      this.boxResourceModalMode = 'create';
+      this.editingBoxResourceId = null;
+      this.boxResourceForm = { title: '', type: 'Handout', author: '', tags: [], url: '', storage_path: '', description: '' };
+      this.boxResourceTagInput = '';
+      this.boxResourceFormError = '';
+      this.boxResourceUploadError = '';
+      this.boxResourceModalOpen = true;
+    },
+
+    openEditBoxResource(resource) {
+      this.boxResourceModalMode = 'edit';
+      this.editingBoxResourceId = resource.id;
+      this.boxResourceForm = {
+        title: resource.title,
+        type: resource.type || 'Handout',
+        author: resource.author || '',
+        tags: [...(resource.tags || [])],
+        url: resource.url || '',
+        storage_path: resource.storage_path || '',
+        description: resource.description || '',
+      };
+      this.boxResourceTagInput = '';
+      this.boxResourceFormError = '';
+      this.boxResourceUploadError = '';
+      this.boxResourceModalOpen = true;
+    },
+
+    addBoxResourceTag() {
+      const v = this.boxResourceTagInput.trim();
+      if (v && !this.boxResourceForm.tags.includes(v)) this.boxResourceForm.tags.push(v);
+      this.boxResourceTagInput = '';
+    },
+
+    removeBoxResourceTag(tag) {
+      this.boxResourceForm.tags = this.boxResourceForm.tags.filter(t => t !== tag);
+    },
+
+    async uploadBoxResourceFile(event) {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      const client = StorageLayer.getSupabaseClient();
+      if (!client) { this.boxResourceUploadError = 'ابتدا از Settings به Supabase وصل شوید.'; return; }
+      this.boxResourceUploading = true;
+      this.boxResourceUploadError = '';
+      try {
+        const safeName = file.name.replace(/[^\w.\-\u0600-\u06FF ]/g, '_');
+        const randomSeg = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+          : Date.now().toString(36) + Math.random().toString(36).slice(2);
+        const path = StorageLayer.getOwnerId() + '/' + randomSeg + '/' + safeName;
+        const { error } = await client.storage.from('resource-files').upload(path, file, { upsert: false });
+        if (error) throw error;
+        this.boxResourceForm.storage_path = path;
+      } catch (e) {
+        this.boxResourceUploadError = 'آپلود ناموفق بود: ' + (e.message || 'خطای نامشخص');
+      } finally {
+        this.boxResourceUploading = false;
+      }
+    },
+
+    removeUploadedBoxResourceFile() {
+      this.boxResourceForm.storage_path = '';
+      this.boxResourceUploadError = '';
+    },
+
+    saveBoxResource() {
+      const title = this.boxResourceForm.title.trim();
+      this.boxResourceFormError = '';
+      if (!title) { this.boxResourceFormError = 'عنوان الزامی است.'; return; }
+      const payload = {
+        title,
+        description: this.boxResourceForm.description.trim(),
+        type: this.boxResourceForm.type,
+        author: this.boxResourceForm.author.trim(),
+        tags: this.boxResourceForm.tags,
+        url: this.boxResourceForm.url.trim(),
+        storage_path: this.boxResourceForm.storage_path || null,
+        status: 'Active',
+        version: 'v1',
+        project_id: null,
+        box_id: this.activeBoxId,
+      };
+      const res = this.boxResourceModalMode === 'create'
+        ? StorageLayer.create('resources', payload)
+        : StorageLayer.update('resources', this.editingBoxResourceId, payload);
+      if (!res.success) { this.boxResourceFormError = res.error.message; return; }
+      this.boxResourceModalOpen = false;
+      this.loadResources();
+      this.showToast(this.boxResourceModalMode === 'create' ? 'منبع ثبت شد.' : 'منبع به‌روزرسانی شد.');
+    },
+
+    askDeleteBoxResource(resource) {
+      this.deleteTarget = { type: 'resource', id: resource.id, title: resource.title };
+      this.confirmModalOpen = true;
+    },
+
+    /* ====================================================================
        JOURNAL MODULE — state
        منبع الزامات: 002 (نقش ماژول) · 005 (Domain Experience)
        Mood/TimeLog/AI-Discussions طبق تصمیمات این چت اضافه شدند (Gap مستندات).
@@ -6307,6 +6757,7 @@ function app() {
       this.loadNotes();
       this.loadPrompts();
       this.loadResources();
+      this.loadResourceBoxes();
       this.loadJournalEntries();
       this.loadRoadmaps();
       this.loadChats();
@@ -6341,7 +6792,7 @@ function app() {
 
       this.supabaseSettingsForm.anonKey = '';
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadNotes(); this.loadPrompts(); this.loadResources();
+      this.loadProjects(); this.loadGoals(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
       this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
       this.showToast('اتصال Supabase برقرار شد و داده‌ها بارگذاری شدند.');
     },
@@ -6355,7 +6806,7 @@ function app() {
 
       this.migrationReport = res.data;
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadNotes(); this.loadPrompts(); this.loadResources();
+      this.loadProjects(); this.loadGoals(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
       this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
 
       const totalMigrated = Object.values(res.data).reduce((s, r) => s + r.migrated, 0);
@@ -6489,7 +6940,7 @@ function app() {
       // در فریم بعدی نمایش بده تا template x-if از نو ساخته شود و انیمیشن دوباره اجرا شود
       this.$nextTick(() => {
         this.celebration = { show: true, title: title || '', mission: !!isMission };
-        this._celebrationTimer = setTimeout(() => { this.celebration.show = false; }, 1100);
+        this._celebrationTimer = setTimeout(() => { this.celebration.show = false; }, 2800);
       });
     },
 
@@ -7311,6 +7762,11 @@ function app() {
         this.loadGoals();
         this.loadProjects(); // projects.goal_id با ON DELETE SET NULL سمت Supabase پاک می‌شود
         this.showToast('هدف حذف شد (Soft Delete) — پروژه‌های متصل دست‌نخورده می‌مانند.');
+      } else if (this.deleteTarget.type === 'resource_box') {
+        StorageLayer.remove('resource_boxes', this.deleteTarget.id); // Soft Delete پیش‌فرض
+        this.loadResourceBoxes();
+        if (this.activeBoxId === this.deleteTarget.id) this.backToBoxes();
+        this.showToast('باکس حذف شد (Soft Delete) — منابع داخلش دست‌نخورده می‌مانند (box_id آن‌ها پاک می‌شود).');
       }
 
       this.confirmModalOpen = false;
