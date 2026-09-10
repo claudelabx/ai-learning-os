@@ -1383,6 +1383,31 @@
     </div>
 
     <!-- ==================================================================
+         Companion Home — قدم اول (سند Phase 1، بخش III.C «Open Problems»)
+         مسائل بسته‌نشده، نه فهرست Taskهای عقب‌افتاده.
+         ================================================================== -->
+    <div class="card" x-show="openProblems.length > 0">
+      <div class="mission-kicker">
+        <span x-html="icon('help-circle')"></span>
+        <span>مسائل باز</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:var(--space-s); margin-top:var(--space-m);">
+        <template x-for="problem in openProblems.slice(0, 3)" :key="problem.id">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--space-m); cursor:pointer;" @click="goTo(moduleById('problems'))">
+            <div>
+              <strong x-text="problem.title"></strong>
+              <p class="form-helper" x-show="problem.next_step" x-text="'گام بعدی: ' + problem.next_step"></p>
+            </div>
+            <span class="badge" :class="problemStatusMeta(problem.status).badge" x-text="problemStatusMeta(problem.status).label"></span>
+          </div>
+        </template>
+        <button class="btn btn-secondary" style="align-self:flex-start;" @click="goTo(moduleById('problems'))" x-show="openProblems.length > 3">
+          <span x-text="'مشاهده همه (' + openProblems.length + ' مورد)'"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================================================================
          زیرفاز 1.5-و (سند 012) — داشبورد تعاملی بر پایه planned_date (سند 005 نسخه 4.2)
          اصل حاکم: هیچ عمل ساده‌ای کاربر را مجبور به ترک داشبورد نمی‌کند (سند 002).
          ================================================================== -->
@@ -1698,6 +1723,70 @@
                 <span class="en" x-text="goalProgress(goal) + '٪'"></span>
               </div>
               <div class="progress-track"><div class="progress-fill" :style="'width:' + goalProgress(goal) + '%'"></div></div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- PROBLEMS ---------- -->
+  <section class="view" x-show="currentView === 'problems'" x-cloak>
+    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
+      <div class="module-toolbar">
+        <div>
+          <h1>مسائل</h1>
+          <p class="subtitle">هر چیزی Task نیست — چیزی که هنوز نمی‌دانی از کجا شروعش کنی یا چه تصمیمی بگیری، یک Problem است (سند مادر، بند ۵).</p>
+        </div>
+        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
+          <button class="btn btn-primary" @click="openCreateProblem()">
+            <span x-html="icon('plus')"></span>
+            <span>مسئله جدید</span>
+          </button>
+        </div>
+      </div>
+
+      <template x-if="problems.length === 0">
+        <div class="card">
+          <div class="empty-state" style="padding-block:var(--space-xxl);">
+            <div class="noor-spot noor-ambient" x-html="noor('hi')"></div>
+            <strong>هنوز مسئله‌ای ثبت نشده</strong>
+            <p>وقتی چیزی گیج‌کننده یا حل‌نشده در زندگی‌ات هست، اینجا ثبتش کن — نیازی نیست همه‌چیز به Task تبدیل شود.</p>
+            <div class="empty-actions">
+              <button class="btn btn-primary" @click="openCreateProblem()"><span x-html="icon('plus')"></span><span>اولین مسئله را ثبت کن</span></button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div class="project-grid" x-show="problems.length > 0">
+        <template x-for="problem in problems" :key="problem.id">
+          <div class="card project-card">
+            <div class="project-card-top">
+              <h3 class="project-card-title" x-text="problem.title"></h3>
+              <div class="project-card-actions">
+                <button class="mini-icon-btn" @click="openEditProblem(problem)" title="ویرایش مسئله" aria-label="ویرایش مسئله">
+                  <span x-html="icon('pencil')"></span>
+                </button>
+                <button class="mini-icon-btn danger" @click="askDeleteProblem(problem)" title="حذف مسئله" aria-label="حذف مسئله">
+                  <span x-html="icon('trash-2')"></span>
+                </button>
+              </div>
+            </div>
+
+            <p class="project-card-desc" x-text="problem.description || 'بدون توضیح'"></p>
+            <p class="form-helper" x-show="problem.context"><strong>Context: </strong><span x-text="problem.context"></span></p>
+            <p class="form-helper" x-show="problem.why_it_matters"><strong>چرا مهم است: </strong><span x-text="problem.why_it_matters"></span></p>
+            <p class="form-helper" x-show="problem.next_step"><strong>گام بعدی: </strong><span x-text="problem.next_step"></span></p>
+
+            <div class="project-card-badges">
+              <span class="badge" :class="problemStatusMeta(problem.status).badge">
+                <span x-html="icon(problemStatusMeta(problem.status).icon)"></span>
+                <span x-text="problemStatusMeta(problem.status).label"></span>
+              </span>
+              <span class="badge" :class="priorityMeta(problem.priority).badge">
+                <span x-text="priorityMeta(problem.priority).label"></span>
+              </span>
             </div>
           </div>
         </template>
@@ -3521,6 +3610,83 @@
 </div>
 
 <!-- =====================================================================
+     PROBLEM MODAL — Create / Edit (سند مادر بند ۵/۱۱ · سند Phase 1 بخش V)
+     ===================================================================== -->
+<div class="modal-overlay" x-show="problemModalOpen" x-cloak x-transition @keydown.escape.window="problemModalOpen = false">
+  <div class="modal" @click.outside="problemModalOpen = false" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2 x-text="problemModalMode === 'create' ? 'مسئله جدید' : 'ویرایش مسئله'"></h2>
+        <p>هر چیزی Task نیست — این برای چیزی است که هنوز نیاز به فهم، تصمیم یا صورت‌بندی دارد.</p>
+      </div>
+      <button class="icon-btn" @click="problemModalOpen = false" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="pf-title">عنوان مسئله <span class="optional">(الزامی)</span></label>
+        <input id="pf-title" class="form-input" :class="{invalid: problemFormError}" type="text" x-model="problemForm.title" placeholder="مثلاً: نمی‌دانم برای امتحان علوم پایه از کجا شروع کنم" @keydown.enter="saveProblem()">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="pf-desc">شرح <span class="optional">(اختیاری)</span></label>
+        <textarea id="pf-desc" class="form-textarea" x-model="problemForm.description" placeholder="این مسئله دقیقاً چیست؟"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="pf-context">Context <span class="optional">(اختیاری)</span></label>
+        <textarea id="pf-context" class="form-textarea" x-model="problemForm.context" placeholder="این مسئله به چه چیز دیگری مرتبط است؟ (هدف، پروژه، تجربه‌ی قبلی، محدودیت زمانی...)"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="pf-why">چرا مهم است؟ <span class="optional">(اختیاری)</span></label>
+        <textarea id="pf-why" class="form-textarea" x-model="problemForm.why_it_matters"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="pf-next">گام بعدی <span class="optional">(اختیاری)</span></label>
+        <input id="pf-next" class="form-input" type="text" x-model="problemForm.next_step" placeholder="مشخص‌ترین اقدام بعدی چیست؟">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="pf-reflection">آخرین Reflection <span class="optional">(اختیاری)</span></label>
+        <textarea id="pf-reflection" class="form-textarea" x-model="problemForm.last_reflection" placeholder="آخرین باری که به این مسئله فکر کردی، چه چیزی فهمیدی؟"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="pf-status">وضعیت</label>
+          <select id="pf-status" class="form-select" x-model="problemForm.status">
+            <template x-for="opt in problemStatusOptions" :key="opt.value">
+              <option :value="opt.value" x-text="opt.label"></option>
+            </template>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pf-priority">اولویت</label>
+          <select id="pf-priority" class="form-select" x-model="problemForm.priority">
+            <template x-for="opt in priorityOptions" :key="opt.value">
+              <option :value="opt.value" x-text="opt.label"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+
+      <p class="form-error" x-show="problemFormError" x-text="problemFormError"></p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" @click="problemModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="saveProblem()">
+        <span x-text="problemModalMode === 'create' ? 'ایجاد مسئله' : 'ذخیره تغییرات'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
      DAY PLAN MODAL — زیرفاز 1.5-و (سند 012): دیدن/افزودن برنامه یک روز
      تصمیم ثبت‌شده کاربر در این چت: هفته تقویمی شمسی؛ روزهای گذشته فقط قابل مشاهده.
      ===================================================================== -->
@@ -5272,13 +5438,14 @@ const StorageLayer = (() => {
   const ALL_COLLECTIONS = [
     'projects', 'roadmaps', 'modules', 'lessons', 'tasks', 'practices',
     'time_logs', 'chats', 'notes', 'prompts', 'resources', 'journal', 'goals',
-    'inbox_items', 'resource_boxes',
+    'inbox_items', 'resource_boxes', 'problems',
   ];
   const ENTITY_TYPE_BY_COLLECTION = {
     projects: 'project', tasks: 'task', time_logs: 'time_log', roadmaps: 'roadmap',
     modules: 'module', lessons: 'lesson', practices: 'practice', notes: 'note',
     prompts: 'prompt', chats: 'chat', resources: 'resource', journal: 'journal',
     goals: 'goal', inbox_items: 'inbox_item', resource_boxes: 'resource_box',
+    problems: 'problem',
   };
 
   function ok(data) {
@@ -6169,6 +6336,7 @@ function app() {
     modules: [
       { id: 'dashboard',  label: 'داشبورد',          icon: 'layout-dashboard', disabled: false, phase: '' },
       { id: 'inbox',      label: 'صندوق ورودی',       icon: 'inbox',            disabled: false, phase: '' },
+      { id: 'problems',   label: 'مسائل',              icon: 'help-circle',      disabled: false, phase: '' },
       { id: 'goals',      label: 'اهداف',              icon: 'target',           disabled: false, phase: '' },
       { id: 'learning',   label: 'یادگیری',           icon: 'graduation-cap',   disabled: false, phase: '' },
       { id: 'projects',   label: 'پروژه‌ها',          icon: 'folder-kanban',    disabled: false, phase: '' },
@@ -6188,7 +6356,7 @@ function app() {
     // هیچ تغییری در مسیریابی، goTo یا Storage ایجاد نمی‌کند.
     // ترتیب ثابت و «امروز» همیشه اول — طبق قواعد گروه‌بندی سند 002.
     navGroups: [
-      { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'inbox', 'journal'] },
+      { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'inbox', 'problems', 'journal'] },
       { id: 'path',      label: 'مسیر',   moduleIds: ['goals', 'learning', 'projects'] },
       { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge', 'prompt-hub', 'ai-chats', 'resources', 'resource-boxes'] },
       { id: 'output',    label: 'خروجی',  moduleIds: ['portfolio', 'analytics'] },
@@ -6265,6 +6433,32 @@ function app() {
       { value: 'Active',     label: 'فعال',        badge: 'badge-progress', icon: 'refresh-cw' },
       { value: 'Achieved',   label: 'محقق‌شده',   badge: 'badge-success',  icon: 'check-circle-2' },
       { value: 'Abandoned',  label: 'رهاشده',      badge: 'badge-muted',    icon: 'archive' },
+    ],
+
+    // ====================================================================
+    // PROBLEMS MODULE — state (Personal Companion · Phase 1 · Part V)
+    // Problem ریشه‌ی معماری پروژه است (سند مادر بند ۵). هر چیزی Task نیست؛
+    // چیزی که «نمی‌دانم چطور شروع کنم / چه تصمیمی بگیرم» است، Problem می‌شود.
+    // وضعیت‌ها دقیقاً طبق Problem Solving Loop سند مادر (بند ۱۱).
+    // ====================================================================
+    problems: [],
+    problemModalOpen: false,
+    problemModalMode: 'create',
+    editingProblemId: null,
+    problemForm: {
+      title: '', description: '', context: '', why_it_matters: '',
+      next_step: '', last_reflection: '', status: 'Captured', priority: 'Medium',
+    },
+    problemFormError: '',
+    problemStatusOptions: [
+      { value: 'Captured',      label: 'ثبت‌شده',        badge: 'badge-muted',    icon: 'inbox' },
+      { value: 'Understanding', label: 'در حال فهم',      badge: 'badge-progress', icon: 'help-circle' },
+      { value: 'Framed',        label: 'صورت‌بندی‌شده',  badge: 'badge-progress', icon: 'target' },
+      { value: 'Deciding',      label: 'در حال تصمیم',    badge: 'badge-progress', icon: 'refresh-cw' },
+      { value: 'Acting',        label: 'در حال اقدام',    badge: 'badge-progress', icon: 'flame' },
+      { value: 'Waiting',       label: 'در انتظار',       badge: 'badge-warning',  icon: 'clock' },
+      { value: 'Resolved',      label: 'حل‌شده',          badge: 'badge-success',  icon: 'check-circle-2' },
+      { value: 'Dropped',       label: 'کنار گذاشته‌شده', badge: 'badge-muted',    icon: 'archive' },
     ],
 
     taskModalOpen: false,
@@ -6754,6 +6948,7 @@ function app() {
 
       this.loadProjects();
       this.loadGoals();
+      this.loadProblems();
       this.loadNotes();
       this.loadPrompts();
       this.loadResources();
@@ -6792,7 +6987,7 @@ function app() {
 
       this.supabaseSettingsForm.anonKey = '';
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
+      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
       this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
       this.showToast('اتصال Supabase برقرار شد و داده‌ها بارگذاری شدند.');
     },
@@ -6806,7 +7001,7 @@ function app() {
 
       this.migrationReport = res.data;
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
+      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
       this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
 
       const totalMigrated = Object.values(res.data).reduce((s, r) => s + r.migrated, 0);
@@ -7215,6 +7410,12 @@ function app() {
           due_date: null, estimate_minutes: null, spent_minutes: null, checklist: [], dependencies: [],
           related_files: [], related_prompt: null,
         };
+      } else if (targetType === 'Problem') {
+        collection = 'problems';
+        payload = {
+          title, description: rawText, context: '', why_it_matters: '',
+          next_step: '', last_reflection: '', status: 'Captured', priority: 'Medium',
+        };
       } else {
         collection = 'notes';
         payload = {
@@ -7232,6 +7433,7 @@ function app() {
       });
       this.closeInboxAccept();
       this.loadInboxItems();
+      this.bumpDashRefresh();
       this.showToast(title + ' ساخته شد.');
     },
 
@@ -7313,6 +7515,84 @@ function app() {
       this.goalModalOpen = false;
       this.loadGoals();
       this.showToast(this.goalModalMode === 'create' ? 'هدف ایجاد شد.' : 'هدف به‌روزرسانی شد.');
+    },
+
+    // ==================================================================
+    // PROBLEMS MODULE — Data access + CRUD (فقط از طریق StorageLayer)
+    // منبع الزامات: سند مادر بند ۵ و ۱۱ (ریشه = Problem Solving) ·
+    // سند Phase 1 بخش V (The Problem System)
+    // ==================================================================
+    loadProblems() {
+      const res = StorageLayer.list('problems');
+      this.problems = res.success ? res.data : [];
+    },
+
+    problemStatusMeta(value) { return this.problemStatusOptions.find(o => o.value === value) || this.problemStatusOptions[0]; },
+
+    /** مسائل باز — هر چیزی که هنوز Resolved یا Dropped نشده (برای Companion Home) */
+    get openProblems() {
+      return this.problems.filter(p => p.status !== 'Resolved' && p.status !== 'Dropped');
+    },
+
+    openCreateProblem() {
+      this.problemModalMode = 'create';
+      this.editingProblemId = null;
+      this.problemForm = {
+        title: '', description: '', context: '', why_it_matters: '',
+        next_step: '', last_reflection: '', status: 'Captured', priority: 'Medium',
+      };
+      this.problemFormError = '';
+      this.problemModalOpen = true;
+    },
+
+    openEditProblem(problem) {
+      this.problemModalMode = 'edit';
+      this.editingProblemId = problem.id;
+      this.problemForm = {
+        title: problem.title,
+        description: problem.description || '',
+        context: problem.context || '',
+        why_it_matters: problem.why_it_matters || '',
+        next_step: problem.next_step || '',
+        last_reflection: problem.last_reflection || '',
+        status: problem.status,
+        priority: problem.priority || 'Medium',
+      };
+      this.problemFormError = '';
+      this.problemModalOpen = true;
+    },
+
+    saveProblem() {
+      const title = this.problemForm.title.trim();
+      this.problemFormError = '';
+      if (!title) { this.problemFormError = 'عنوان مسئله الزامی است.'; return; }
+
+      const payload = {
+        title,
+        description: this.problemForm.description.trim(),
+        context: this.problemForm.context.trim(),
+        why_it_matters: this.problemForm.why_it_matters.trim(),
+        next_step: this.problemForm.next_step.trim(),
+        last_reflection: this.problemForm.last_reflection.trim(),
+        status: this.problemForm.status,
+        priority: this.problemForm.priority,
+      };
+
+      const res = this.problemModalMode === 'create'
+        ? StorageLayer.create('problems', payload)
+        : StorageLayer.update('problems', this.editingProblemId, payload);
+
+      if (!res.success) { this.problemFormError = res.error.message; return; }
+
+      this.problemModalOpen = false;
+      this.loadProblems();
+      this.bumpDashRefresh();
+      this.showToast(this.problemModalMode === 'create' ? 'مسئله ثبت شد.' : 'مسئله به‌روزرسانی شد.');
+    },
+
+    askDeleteProblem(problem) {
+      this.deleteTarget = { type: 'problem', id: problem.id, title: problem.title };
+      this.confirmModalOpen = true;
     },
 
     /* ====================================================================
@@ -7762,6 +8042,10 @@ function app() {
         this.loadGoals();
         this.loadProjects(); // projects.goal_id با ON DELETE SET NULL سمت Supabase پاک می‌شود
         this.showToast('هدف حذف شد (Soft Delete) — پروژه‌های متصل دست‌نخورده می‌مانند.');
+      } else if (this.deleteTarget.type === 'problem') {
+        StorageLayer.remove('problems', this.deleteTarget.id); // Soft Delete پیش‌فرض — طبق 005
+        this.loadProblems();
+        this.showToast('مسئله حذف شد (Soft Delete) — قابل بازگردانی.');
       } else if (this.deleteTarget.type === 'resource_box') {
         StorageLayer.remove('resource_boxes', this.deleteTarget.id); // Soft Delete پیش‌فرض
         this.loadResourceBoxes();
