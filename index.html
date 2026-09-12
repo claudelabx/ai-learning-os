@@ -2373,6 +2373,33 @@
         </button>
       </div>
 
+      <!-- ==================================================================
+           Memory Review (سند مادر بند ۱۴/۳۷ · سند Phase 1 بخش VII بند ۱۳)
+           هر Memoryای که خودِ کاربر مستقیم نساخته (مثلاً از یک Chat) تا وقتی
+           تأیید نشود Candidate می‌ماند و اینجا برای بررسی سریع نشان داده می‌شود.
+           ================================================================== -->
+      <div class="card" x-show="candidateMemories.length > 0" style="border-color:var(--color-warning);">
+        <div class="mission-kicker">
+          <span x-html="icon('sparkles')"></span>
+          <span x-text="'Memory پیشنهادی برای بررسی (' + candidateMemories.length + ' مورد)'"></span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:var(--space-m); margin-top:var(--space-m);">
+          <template x-for="memory in candidateMemories" :key="memory.id">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:var(--space-m); flex-wrap:wrap;">
+              <div>
+                <strong x-text="memory.title"></strong>
+                <p class="form-helper" x-text="(memory.description || '').slice(0, 140)"></p>
+              </div>
+              <div style="display:flex; gap:var(--space-s);">
+                <button class="btn btn-secondary" @click="openEditNote(memory)">اصلاح</button>
+                <button class="btn btn-secondary" @click="ignoreCandidateMemory(memory)">نادیده بگیر</button>
+                <button class="btn btn-primary" @click="confirmCandidateMemory(memory)">تأیید کن</button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
       <div class="filter-bar">
         <button class="filter-chip" :class="{active: noteFilterType === 'all'}" @click="noteFilterType = 'all'">
           <span>همه</span>
@@ -4031,6 +4058,16 @@
           </template>
         </select>
         <span class="form-helper">منبع گفتگو (source_chat_id) پس از ساخته‌شدن ماژول AI Chats قابل اتصال می‌شود.</span>
+      </div>
+
+      <div class="form-group" x-show="noteForm.type === 'memory'">
+        <label class="form-label" for="nf-confidence">وضعیت اعتماد (Memory Confidence)</label>
+        <select id="nf-confidence" class="form-select" x-model="noteForm.memory_confidence">
+          <template x-for="opt in memoryConfidenceOptions" :key="opt.value">
+            <option :value="opt.value" x-text="opt.label"></option>
+          </template>
+        </select>
+        <span class="form-helper">تا وقتی خودت تأییدش نکنی، Memory فقط یک حدس است — سند مادر بند ۱۴/۳۷.</span>
       </div>
 
       <div class="form-group">
@@ -6526,7 +6563,7 @@ function app() {
     noteModalOpen: false,
     noteModalMode: 'create',      // 'create' | 'edit'
     editingNoteId: null,
-    noteForm: { title: '', description: '', type: 'note', status: 'Draft', version: 'v1', tags: [], project_id: null, recall_priority: 'Medium', source_chat_id: null, version_history: [] },
+    noteForm: { title: '', description: '', type: 'note', status: 'Draft', version: 'v1', tags: [], project_id: null, recall_priority: 'Medium', source_chat_id: null, memory_confidence: 'Confirmed', version_history: [] },
     noteFormError: '',
     noteTagInput: '',
     originalNoteDescription: '',   // مبنای تشخیص «تغییر محتوا» برای بالارفتن خودکار Minor
@@ -6543,6 +6580,13 @@ function app() {
       { value: 'Low',    label: 'کم' },
       { value: 'Medium', label: 'متوسط' },
       { value: 'High',   label: 'بالا' },
+    ],
+    // Memory Review — طبق سند مادر بخش Memory (بند ۱۴) و Phase 1 بخش VII (بند ۱۳):
+    // Memory که خودِ کاربر مستقیم می‌سازد Confirmed است؛ Memoryای که از یک Chat
+    // یا پیشنهاد AI ساخته می‌شود، تا وقتی کاربر تأییدش نکند، فقط Candidate است.
+    memoryConfidenceOptions: [
+      { value: 'Candidate', label: 'پیشنهادی (هنوز تأیید نشده)', badge: 'badge-warning' },
+      { value: 'Confirmed', label: 'تأییدشده',                    badge: 'badge-success' },
     ],
 
     /* ====================================================================
@@ -8110,6 +8154,24 @@ function app() {
 
     noteTypeMeta(value) { return this.noteTypeOptions.find(o => o.value === (value || 'note')) || this.noteTypeOptions[0]; },
 
+    // Memory Review — طبق سند مادر بند ۱۴/۳۷ و سند Phase 1 بخش VII بند ۱۳
+    get candidateMemories() {
+      return this.notes.filter(n => n.type === 'memory' && n.memory_confidence === 'Candidate');
+    },
+
+    confirmCandidateMemory(memory) {
+      const res = StorageLayer.update('notes', memory.id, { memory_confidence: 'Confirmed' });
+      if (!res.success) { this.showToast(res.error.message); return; }
+      this.loadNotes();
+      this.showToast('«' + memory.title + '» به‌عنوان Memory تأییدشده ثبت شد.');
+    },
+
+    ignoreCandidateMemory(memory) {
+      StorageLayer.remove('notes', memory.id); // Soft Delete — قابل بازگردانی
+      this.loadNotes();
+      this.showToast('«' + memory.title + '» نادیده گرفته شد.');
+    },
+
     // ---- Note CRUD ----
     openCreateNote(presetProjectId) {
       this.noteModalMode = 'create';
@@ -8117,7 +8179,7 @@ function app() {
       this.noteForm = {
         title: '', description: '', type: 'note', status: 'Draft', version: 'v1',
         tags: [], project_id: presetProjectId || null, recall_priority: 'Medium', source_chat_id: null,
-        version_history: [],
+        memory_confidence: 'Confirmed', version_history: [],
       };
       this.originalNoteDescription = '';
       this.noteVersionManuallyBumped = false;
@@ -8141,6 +8203,7 @@ function app() {
         project_id: note.project_id || null,
         recall_priority: note.recall_priority || 'Medium',
         source_chat_id: note.source_chat_id || null,
+        memory_confidence: note.memory_confidence || 'Confirmed',
         version_history: (note.version_history || []).map(e => ({ ...e })),
       };
       this.originalNoteDescription = note.description || '';
@@ -8244,6 +8307,7 @@ function app() {
         project_id: this.noteForm.project_id || null,
         recall_priority: isMemory ? this.noteForm.recall_priority : null,
         source_chat_id: isMemory ? (this.noteForm.source_chat_id || null) : null, // ماژول AI Chats هنوز ساخته نشده — طبق 011
+        memory_confidence: isMemory ? this.noteForm.memory_confidence : null,
         version_history: history,
       };
 
@@ -9360,6 +9424,7 @@ function app() {
         project_id: c.project_id || null,
         recall_priority: 'Medium',
         source_chat_id: c.id,
+        memory_confidence: 'Candidate', // از Chat خودکار ساخته شده — طبق سند Phase 1 بند ۱۳، تا تأیید کاربر Candidate می‌ماند
         version_history: [{
           version: 'v1', description: 'نسخهٔ اولیه', content_snapshot: summary,
           changed_at: nowIso, change_type: 'initial',
@@ -9370,7 +9435,7 @@ function app() {
       if (!noteRes.success) { this.chatFormError = noteRes.error.message; return; }
 
       this.loadNotes();
-      this.showToast('یک Note جدید (Memory) در Knowledge از این Chat ساخته شد.');
+      this.showToast('یک Memory پیشنهادی از این Chat ساخته شد — برای تأیید نهایی، از بخش «دانش» بررسی‌اش کن.');
     },
 
     /* ====================================================================
