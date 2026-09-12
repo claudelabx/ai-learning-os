@@ -1383,6 +1383,28 @@
     </div>
 
     <!-- ==================================================================
+         Proactive Layer (سند Phase 1، Day 7 · بند ۱۶/۱۷)
+         فقط وقتی نشان داده می‌شود که حداقل یک دلیل واقعی وجود دارد.
+         ================================================================== -->
+    <div class="card" x-show="dashboardInsights.length > 0" style="border-color:var(--color-primary);">
+      <div class="mission-kicker">
+        <span x-html="icon('sparkles')"></span>
+        <span>Companion جلو آمد</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:var(--space-s); margin-top:var(--space-m);">
+        <template x-for="(insight, idx) in dashboardInsights" :key="idx">
+          <div style="display:flex; align-items:flex-start; gap:var(--space-s);">
+            <span x-html="icon(insight.icon)"></span>
+            <span x-text="insight.text"></span>
+          </div>
+        </template>
+        <button class="btn btn-secondary" style="align-self:flex-start;" @click="goTo(moduleById('companion'))">
+          <span>گفتگو رو ادامه بده</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================================================================
          Companion Home — قدم اول (سند Phase 1، بخش III.C «Open Problems»)
          مسائل بسته‌نشده، نه فهرست Taskهای عقب‌افتاده.
          ================================================================== -->
@@ -1726,6 +1748,91 @@
             </div>
           </div>
         </template>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------- COMPANION CHAT ---------- -->
+  <!-- سند مادر بخش پنجم/ششم (Companion = رابط هوشمند انسان با کل سیستم) ·
+       سند Phase 1، Day 6 (Agent Context-aware) -->
+  <section class="view" x-show="currentView === 'companion'" x-cloak>
+    <div style="display:flex; flex-direction:column; gap:var(--space-l); height:calc(100vh - var(--header-h) - var(--space-xxl)); max-height:820px;">
+      <div class="module-toolbar">
+        <div>
+          <h1>گفتگو با Companion</h1>
+          <p class="subtitle">این یک Chatbot عمومی نیست — قبل از هر پاسخ، مسائل باز، اهداف و حافظه‌های تأییدشده‌ات را می‌بیند.</p>
+        </div>
+        <button class="btn btn-secondary" @click="clearCompanionChat()" x-show="companionMessages.length > 0">
+          <span x-html="icon('x')"></span>
+          <span>شروع گفتگوی تازه</span>
+        </button>
+      </div>
+
+      <div class="card" style="flex:1; display:flex; flex-direction:column; overflow:hidden; padding:0;">
+        <div id="companion-scroll" style="flex:1; overflow-y:auto; padding:var(--space-l); display:flex; flex-direction:column; gap:var(--space-m);">
+
+          <template x-if="companionMessages.length === 0">
+            <div class="empty-state" style="padding-block:var(--space-xxl);">
+              <div class="noor-spot noor-ambient" x-html="noor('hi')"></div>
+              <strong>چه چیزی الان توی ذهنته؟</strong>
+              <p>می‌تونی درباره‌ی یک مسئله‌ی باز بپرسی، کمک بخوای برای صورت‌بندی یک تصمیم، یا فقط فکر بلند کنی.</p>
+            </div>
+          </template>
+
+          <template x-for="(msg, idx) in companionMessages" :key="msg.id || idx">
+            <div>
+              <template x-if="msg.role === 'system'">
+                <div style="display:flex; align-items:center; gap:var(--space-s); margin-block:var(--space-s); color:var(--color-text-secondary); font-size:var(--text-caption);">
+                  <div style="flex:1; height:1px; background:var(--color-neutral-border);"></div>
+                  <span x-text="msg.content"></span>
+                  <div style="flex:1; height:1px; background:var(--color-neutral-border);"></div>
+                </div>
+              </template>
+              <template x-if="msg.role !== 'system'">
+                <div :style="'display:flex; ' + (msg.role === 'user' ? 'justify-content:flex-end;' : 'justify-content:flex-start;')">
+                  <div style="max-width:75%;">
+                    <div class="form-helper" style="margin-bottom:4px;" x-show="msg.role === 'proactive'">
+                      <span x-html="icon('sparkles')"></span>
+                      <span>Companion جلو آمد</span>
+                    </div>
+                    <div :style="'padding:var(--space-m); border-radius:var(--radius-l); white-space:pre-wrap; ' +
+                                  (msg.role === 'user'
+                                    ? 'background:var(--color-primary); color:var(--color-on-accent); border-bottom-left-radius:var(--radius-s);'
+                                    : msg.role === 'proactive'
+                                      ? 'background:var(--color-primary-soft); border:1px solid var(--color-primary); border-bottom-right-radius:var(--radius-s);'
+                                      : 'background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); border-bottom-right-radius:var(--radius-s);')">
+                      <span x-text="msg.content"></span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+
+          <div style="display:flex; justify-content:flex-start;" x-show="companionLoading">
+            <div style="padding:var(--space-m); border-radius:var(--radius-l); background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border);">
+              <span x-html="icon('loader')"></span>
+              <span>Companion در حال فکر کردن است…</span>
+            </div>
+          </div>
+
+          <p class="form-error" x-show="companionError" x-text="companionError"></p>
+        </div>
+
+        <div style="display:flex; gap:var(--space-s); padding:var(--space-m); border-top:1px solid var(--color-neutral-border);">
+          <input
+            class="form-input"
+            type="text"
+            placeholder="پیامت را بنویس…"
+            x-model="companionInput"
+            @keydown.enter="sendCompanionMessage()"
+            :disabled="companionLoading"
+            style="flex:1;">
+          <button class="btn btn-primary" @click="sendCompanionMessage()" :disabled="companionLoading || !companionInput.trim()">
+            <span x-html="icon('message-circle')"></span>
+            <span>ارسال</span>
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -5505,14 +5612,14 @@ const StorageLayer = (() => {
   const ALL_COLLECTIONS = [
     'projects', 'roadmaps', 'modules', 'lessons', 'tasks', 'practices',
     'time_logs', 'chats', 'notes', 'prompts', 'resources', 'journal', 'goals',
-    'inbox_items', 'resource_boxes', 'problems',
+    'inbox_items', 'resource_boxes', 'problems', 'companion_messages',
   ];
   const ENTITY_TYPE_BY_COLLECTION = {
     projects: 'project', tasks: 'task', time_logs: 'time_log', roadmaps: 'roadmap',
     modules: 'module', lessons: 'lesson', practices: 'practice', notes: 'note',
     prompts: 'prompt', chats: 'chat', resources: 'resource', journal: 'journal',
     goals: 'goal', inbox_items: 'inbox_item', resource_boxes: 'resource_box',
-    problems: 'problem',
+    problems: 'problem', companion_messages: 'companion_message',
   };
 
   function ok(data) {
@@ -5954,6 +6061,30 @@ const StorageLayer = (() => {
       return ok({ url, connected: true });
     },
 
+    /** فراخوانی واقعی Gateway برای Companion Chat — گفتگوی آزاد و Context-aware */
+    async askCompanion(history, contextData) {
+      const url = localStorage.getItem(PREF_PREFIX + 'ai_gateway_url');
+      if (!url) return fail('ابتدا از Settings به AI Gateway وصل شوید.', 'NOT_CONNECTED');
+      const secret = await this.resolveAiGatewaySecret();
+      try {
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(secret ? { 'x-gateway-secret': secret } : {}),
+          },
+          body: JSON.stringify({ mode: 'companion-ask', provider: 'auto', context: { history, ...contextData } }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+          return fail((data.error && data.error.message) || 'خطای Gateway.', 'GATEWAY_ERROR');
+        }
+        return ok(data.data);
+      } catch (e) {
+        return fail('اتصال به Gateway برقرار نشد: ' + e.message, 'NETWORK_ERROR');
+      }
+    },
+
     /** فراخوانی واقعی Gateway برای پیشنهاد گام بعدی روی یک پروژه/تسک */
     async requestNextStepSuggestion(context) {
       const url = localStorage.getItem(PREF_PREFIX + 'ai_gateway_url');
@@ -6144,6 +6275,7 @@ const ENTITY_COLLECTIONS = {
    ICON SET — سبک خطی هم‌راستا با Lucide (سند 007)، به‌صورت Inline SVG
    ========================================================================== */
 const ICONS = {
+  'message-circle': '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
   'layout-dashboard': '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
   'graduation-cap': '<path d="M2 8 12 3l10 5-10 5-10-5Z"/><path d="M6 10.5V16c0 1.5 2.5 3 6 3s6-1.5 6-3v-5.5"/><line x1="22" y1="8" x2="22" y2="14"/>',
   'folder-kanban': '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z"/><line x1="8" y1="10" x2="8" y2="16"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="16" y1="10" x2="16" y2="17"/>',
@@ -6402,6 +6534,7 @@ function app() {
     // فهرست نهایی ماژول‌ها — طبق 002-Information-Architecture
     modules: [
       { id: 'dashboard',  label: 'داشبورد',          icon: 'layout-dashboard', disabled: false, phase: '' },
+      { id: 'companion',  label: 'گفتگو با Companion', icon: 'message-circle',  disabled: false, phase: '' },
       { id: 'inbox',      label: 'صندوق ورودی',       icon: 'inbox',            disabled: false, phase: '' },
       { id: 'problems',   label: 'مسائل',              icon: 'help-circle',      disabled: false, phase: '' },
       { id: 'goals',      label: 'اهداف',              icon: 'target',           disabled: false, phase: '' },
@@ -6423,7 +6556,7 @@ function app() {
     // هیچ تغییری در مسیریابی، goTo یا Storage ایجاد نمی‌کند.
     // ترتیب ثابت و «امروز» همیشه اول — طبق قواعد گروه‌بندی سند 002.
     navGroups: [
-      { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'inbox', 'problems', 'journal'] },
+      { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'companion', 'inbox', 'problems', 'journal'] },
       { id: 'path',      label: 'مسیر',   moduleIds: ['goals', 'learning', 'projects'] },
       { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge', 'prompt-hub', 'ai-chats', 'resources', 'resource-boxes'] },
       { id: 'output',    label: 'خروجی',  moduleIds: ['portfolio', 'analytics'] },
@@ -6528,6 +6661,20 @@ function app() {
       { value: 'Resolved',      label: 'حل‌شده',          badge: 'badge-success',  icon: 'check-circle-2' },
       { value: 'Dropped',       label: 'کنار گذاشته‌شده', badge: 'badge-muted',    icon: 'archive' },
     ],
+
+    // ====================================================================
+    // COMPANION CHAT — گفتگوی آزاد و Context-aware
+    // سند مادر بخش پنجم/ششم (Agent) و سند Phase 1 بخش VIII + Day 6.
+    // این تاریخچه فقط در حافظه‌ی مرورگر است (طبق «Suggest > Execute» — سند
+    // Phase 1 قانون ۷ — فعلاً هیچ چیزی خودکار به Memory/Graph نوشته نمی‌شود).
+    // ====================================================================
+    companionMessages: [],  // { role: 'user'|'assistant'|'system'|'proactive', content }
+    companionInput: '',
+    companionLoading: false,
+    companionError: '',
+    proactiveInsights: [],
+
+    get dashboardInsights() { return this.computeProactiveInsights(); },
 
     taskModalOpen: false,
     taskModalMode: 'create',
@@ -7024,6 +7171,7 @@ function app() {
       this.loadProjects();
       this.loadGoals();
       this.loadProblems();
+      this.loadCompanionMessages();
       this.loadNotes();
       this.loadPrompts();
       this.loadResources();
@@ -7032,7 +7180,69 @@ function app() {
       this.loadRoadmaps();
       this.loadChats();
 
+      this.maybeInjectProactiveNudge();
+
       this.dataReady = true;
+    },
+
+    /* ====================================================================
+       PROACTIVE LAYER (سند Phase 1، Day 7 · بند ۱۶/۱۷)
+       قانون حاکم: هر مداخله باید حداقل یک دلیل واقعی داشته باشد (زمان حساس،
+       ریسک، الگوی قابل‌توجه...) — نه صرفاً برای پرکردن فضا. عمداً قانونی و
+       قطعی (Rule-based) است، نه با فراخوانی AI، تا رفتارش قابل پیش‌بینی و
+       بدون هزینه‌ی اضافه باشد.
+       ==================================================================== */
+    computeProactiveInsights() {
+      const insights = [];
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const in2days = new Date(today); in2days.setDate(today.getDate() + 2);
+
+      // ۱) ددلاین نزدیک — طبق مثال «Before deadline» در سند Phase 1
+      const allTasks = this.loadAllTasksForProactivity();
+      const upcoming = allTasks
+        .filter(t => t.due_date && t.status !== 'Done' && t.status !== 'Deleted')
+        .filter(t => { const d = new Date(t.due_date); return d >= today && d <= in2days; })
+        .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+      upcoming.slice(0, 2).forEach(t => {
+        const daysLeft = Math.max(0, Math.round((new Date(t.due_date) - today) / 86400000));
+        insights.push({
+          icon: 'clock',
+          text: daysLeft === 0
+            ? `«${t.title}» امروز ددلاینش است و هنوز تمام نشده.`
+            : `«${t.title}» فقط ${daysLeft} روز تا ددلاینش مانده و هنوز تمام نشده.`,
+        });
+      });
+
+      // ۲) مسئله‌ی راکد — طبق مثال «Pattern» در سند Phase 1 (چیزی که مدتی تکان نخورده)
+      const staleMs = 5 * 24 * 60 * 60 * 1000;
+      (this.openProblems || [])
+        .filter(p => Date.now() - new Date(p.updated_at).getTime() > staleMs)
+        .slice(0, 2)
+        .forEach(p => insights.push({ icon: 'help-circle', text: `مسئله‌ی «${p.title}» چند روزی است تکان نخورده — هنوز روی ذهنته؟` }));
+
+      // ۳) اگر هیچ‌کدام از موارد بالا صدق نکرد ولی مسئله‌ی بازی هست، یک خلاصه‌ی کلی (Morning Brief ساده)
+      if (!insights.length && this.openProblems && this.openProblems.length > 0) {
+        insights.push({ icon: 'sparkles', text: `الان ${this.openProblems.length} مسئله‌ی باز داری. مهم‌ترینش «${this.openProblems[0].title}» به نظر می‌رسد.` });
+      }
+
+      return insights;
+    },
+
+    /** یک بار در روز (نه هر رفرش) — اگر دلیل واقعی برای مداخله بود، به‌عنوان یک پیام
+        ویژه (role: 'proactive') در Companion Chat درج و در Supabase ذخیره می‌شود. */
+    maybeInjectProactiveNudge() {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const lastShownKey = 'aios:pref:proactive_last_shown';
+      if (localStorage.getItem(lastShownKey) === todayKey) return;
+      localStorage.setItem(lastShownKey, todayKey);
+
+      const insights = this.computeProactiveInsights();
+      this.proactiveInsights = insights; // برای ویجت داشبورد
+      if (!insights.length) return;
+
+      const text = insights.map(i => i.text).join(' ');
+      const saveRes = StorageLayer.create('companion_messages', { role: 'proactive', content: text });
+      this.companionMessages.push({ role: 'proactive', content: text, id: saveRes.success ? saveRes.data.id : null });
     },
 
     refreshConnectionStatus() {
@@ -7062,7 +7272,7 @@ function app() {
 
       this.supabaseSettingsForm.anonKey = '';
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
+      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadCompanionMessages(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
       this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
       this.showToast('اتصال Supabase برقرار شد و داده‌ها بارگذاری شدند.');
     },
@@ -7076,7 +7286,7 @@ function app() {
 
       this.migrationReport = res.data;
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
+      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadCompanionMessages(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
       this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
 
       const totalMigrated = Object.values(res.data).reduce((s, r) => s + r.migrated, 0);
@@ -7298,6 +7508,12 @@ function app() {
       if (!this.activeProjectId) { this.tasks = []; return; }
       const res = StorageLayer.list('tasks', { project_id: this.activeProjectId });
       this.tasks = res.success ? res.data : [];
+    },
+
+    /** فقط برای تشخیص Proactive (ددلاین‌های نزدیک) — جدا از this.tasks که Scope-محدود به پروژه‌ی فعال است */
+    loadAllTasksForProactivity() {
+      const res = StorageLayer.list('tasks');
+      return res.success ? res.data : [];
     },
 
     get activeProject() {
@@ -7627,6 +7843,17 @@ function app() {
       this.problems = res.success ? res.data : [];
     },
 
+    /** بارگذاری تاریخچه‌ی واقعی گفتگو با Companion از دیتابیس (سند Phase 1، Day 6/Companion Chat) */
+    loadCompanionMessages() {
+      const res = StorageLayer.list('companion_messages');
+      this.companionMessages = res.success
+        ? res.data
+            .filter(m => m.status !== 'Deleted')
+            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+            .map(m => ({ id: m.id, role: m.role, content: m.content }))
+        : [];
+    },
+
     problemStatusMeta(value) { return this.problemStatusOptions.find(o => o.value === value) || this.problemStatusOptions[0]; },
 
     /** مسائل باز — هر چیزی که هنوز Resolved یا Dropped نشده (برای Companion Home) */
@@ -7698,6 +7925,65 @@ function app() {
     askDeleteProblem(problem) {
       this.deleteTarget = { type: 'problem', id: problem.id, title: problem.title };
       this.confirmModalOpen = true;
+    },
+
+    /* ====================================================================
+       COMPANION CHAT — گفتگوی آزاد و Context-aware (سند مادر بخش پنجم/ششم؛
+       سند Phase 1، Day 6 — Agent Context Pipeline).
+       قبل از هر پیام، Context واقعی زندگی کاربر (نه فقط متن آخرین پیام) جمع
+       و به Gateway فرستاده می‌شود.
+       ==================================================================== */
+    async sendCompanionMessage() {
+      const text = this.companionInput.trim();
+      if (!text || this.companionLoading) return;
+
+      const userSaveRes = StorageLayer.create('companion_messages', { role: 'user', content: text });
+      const userMsg = { role: 'user', content: text, id: userSaveRes.success ? userSaveRes.data.id : null };
+      this.companionMessages.push(userMsg);
+      this.companionInput = '';
+      this.companionError = '';
+      this.companionLoading = true;
+
+      const contextData = {
+        openProblems: (this.openProblems || []).slice(0, 8).map(p => ({ title: p.title, status: p.status, next_step: p.next_step })),
+        goals: (this.goals || []).filter(g => g.status === 'Active').slice(0, 8).map(g => ({ title: g.title })),
+        activeProjects: (this.projects || []).filter(p => p.status !== 'Archived' && p.status !== 'Deleted').slice(0, 8).map(p => ({ title: p.title })),
+        confirmedMemories: (this.notes || [])
+          .filter(n => n.type === 'memory' && n.memory_confidence === 'Confirmed')
+          .slice(0, 10)
+          .map(m => ({ title: m.title, description: m.description })),
+      };
+
+      // فقط پیام‌های همین «نشست» (بعد از آخرین مرز «شروع گفتگوی تازه») به AI فرستاده می‌شود —
+      // نه کل تاریخچه‌ی همیشگی.
+      const history = this.currentSessionMessages.map(m => ({ role: m.role, content: m.content }));
+      const res = await StorageLayer.askCompanion(history, contextData);
+
+      this.companionLoading = false;
+      if (!res.success) {
+        this.companionError = res.error.message;
+        return;
+      }
+      const assistantSaveRes = StorageLayer.create('companion_messages', { role: 'assistant', content: res.data.answer });
+      this.companionMessages.push({ role: 'assistant', content: res.data.answer, id: assistantSaveRes.success ? assistantSaveRes.data.id : null });
+      this.$nextTick(() => {
+        const box = document.getElementById('companion-scroll');
+        if (box) box.scrollTop = box.scrollHeight;
+      });
+    },
+
+    /** پیام‌های «نشست» فعلی — یعنی بعد از آخرین مرز شروع‌تازه؛ برای Context ارسالی به AI */
+    get currentSessionMessages() {
+      const lastBreak = this.companionMessages.map(m => m.role).lastIndexOf('system');
+      return lastBreak === -1 ? this.companionMessages : this.companionMessages.slice(lastBreak + 1);
+    },
+
+    /** «شروع گفتگوی تازه» — چیزی حذف نمی‌شود (طبق اصل شفافیت Memory در سند مادر)،
+        فقط یک مرز ثبت می‌شود تا Context ارسالی به AI از اینجا به بعد از صفر شروع شود. */
+    clearCompanionChat() {
+      const saveRes = StorageLayer.create('companion_messages', { role: 'system', content: '— گفتگوی تازه —' });
+      this.companionMessages.push({ role: 'system', content: '— گفتگوی تازه —', id: saveRes.success ? saveRes.data.id : null });
+      this.companionError = '';
     },
 
     /* ====================================================================
