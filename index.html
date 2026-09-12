@@ -1780,6 +1780,14 @@
             <p class="form-helper" x-show="problem.next_step"><strong>گام بعدی: </strong><span x-text="problem.next_step"></span></p>
 
             <div class="project-card-badges">
+              <span class="badge badge-progress" x-show="problem.project_id && _projectTitle(problem.project_id)">
+                <span x-html="icon('folder-kanban')"></span>
+                <span x-text="_projectTitle(problem.project_id)"></span>
+              </span>
+              <span class="badge badge-progress" x-show="problem.goal_id && goalTitle(problem.goal_id)">
+                <span x-html="icon('target')"></span>
+                <span x-text="goalTitle(problem.goal_id)"></span>
+              </span>
               <span class="badge" :class="problemStatusMeta(problem.status).badge">
                 <span x-html="icon(problemStatusMeta(problem.status).icon)"></span>
                 <span x-text="problemStatusMeta(problem.status).label"></span>
@@ -3676,6 +3684,28 @@
         <label class="form-label" for="pf-next">گام بعدی <span class="optional">(اختیاری)</span></label>
         <input id="pf-next" class="form-input" type="text" x-model="problemForm.next_step" placeholder="مشخص‌ترین اقدام بعدی چیست؟">
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="pf-project">پروژه‌ی مرتبط <span class="optional">(اختیاری)</span></label>
+          <select id="pf-project" class="form-select" x-model="problemForm.project_id">
+            <option :value="null">بدون پروژه</option>
+            <template x-for="project in projects" :key="project.id">
+              <option :value="project.id" x-text="project.title"></option>
+            </template>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pf-goal">هدف مرتبط <span class="optional">(اختیاری)</span></label>
+          <select id="pf-goal" class="form-select" x-model="problemForm.goal_id">
+            <option :value="null">بدون هدف</option>
+            <template x-for="goal in goals" :key="goal.id">
+              <option :value="goal.id" x-text="goal.title"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+      <p class="form-helper">این ارتباط دقیقاً همان چیزی است که سند مادر «Mina Graph» می‌نامد — به Agent کمک می‌کند بفهمد این مسئله در چه زمینه‌ای است.</p>
 
       <div class="form-group">
         <label class="form-label" for="pf-reflection">آخرین Reflection <span class="optional">(اختیاری)</span></label>
@@ -6485,6 +6515,7 @@ function app() {
     problemForm: {
       title: '', description: '', context: '', why_it_matters: '',
       next_step: '', last_reflection: '', status: 'Captured', priority: 'Medium',
+      project_id: null, goal_id: null,
     },
     problemFormError: '',
     problemStatusOptions: [
@@ -7073,19 +7104,44 @@ function app() {
     },
 
     // ---- AI GATEWAY — پیشنهاد گام بعدی (تب کلیات Project Workspace) ----
+    // سند Phase 1، بخش VIII (بند ۱۴) و بخش XIV (بند ۳۷ — Agent Context Pipeline):
+    // قبل از پرسیدن از AI، همه‌ی Context واقعاً مرتبط را جمع می‌کنیم؛ نه فقط متن آخرین پیام.
     async requestNextStep() {
       this.aiSuggestion = { loading: true, text: '', provider: '', error: '' };
       const project = this.activeProject;
+
       const projectNotes = (this.notes || [])
-        .filter(n => n.project_id === project.id && n.status !== 'Deleted')
+        .filter(n => n.project_id === project.id && n.status !== 'Deleted' && n.type !== 'memory')
         .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
         .slice(0, 5);
+
+      const confirmedMemories = (this.notes || [])
+        .filter(n => n.project_id === project.id && n.type === 'memory' && n.memory_confidence === 'Confirmed')
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .slice(0, 5);
+
+      // حالا Problem واقعاً به Project/Goal وصل است — پس فقط مسائل مرتبط با همین
+      // پروژه (یا همین Goal) را می‌فرستیم، نه کل مسائل باز زندگی کاربر.
+      const relatedOpenProblems = (this.openProblems || [])
+        .filter(p => p.project_id === project.id || (project.goal_id && p.goal_id === project.goal_id))
+        .slice(0, 5);
+      // اگر هیچ مسئله‌ای مستقیماً به این پروژه وصل نبود، برای اینکه Agent کاملاً
+      // کور نماند، مهم‌ترین مسائل عمومی را هم (حداکثر ۲ مورد) به‌عنوان زمینه اضافه می‌کنیم.
+      const openProblems = relatedOpenProblems.length
+        ? relatedOpenProblems
+        : (this.openProblems || []).slice(0, 2);
+
+      const goal = project.goal_id ? (this.goals || []).find(g => g.id === project.goal_id) : null;
+
       const activeTasks = (this.tasks || []).filter(t => t.project_id === project.id && t.status !== 'Done' && t.status !== 'Deleted');
       const focusTask = activeTasks.sort((a, b) => new Date(a.due_date || '9999') - new Date(b.due_date || '9999'))[0] || null;
 
       const context = {
         project: { title: project.title, description: project.description, status: project.status },
+        goal: goal ? { title: goal.title, description: goal.description } : null,
         task: focusTask ? { title: focusTask.title, description: focusTask.description, status: focusTask.status, priority: focusTask.priority, due_date: focusTask.due_date } : null,
+        openProblems: openProblems.map(p => ({ title: p.title, status: p.status, next_step: p.next_step })),
+        confirmedMemories: confirmedMemories.map(m => ({ title: m.title, description: m.description })),
         recentNotes: projectNotes.map(n => ({ title: n.title, description: n.description })),
       };
 
@@ -7584,6 +7640,7 @@ function app() {
       this.problemForm = {
         title: '', description: '', context: '', why_it_matters: '',
         next_step: '', last_reflection: '', status: 'Captured', priority: 'Medium',
+        project_id: null, goal_id: null,
       };
       this.problemFormError = '';
       this.problemModalOpen = true;
@@ -7601,6 +7658,8 @@ function app() {
         last_reflection: problem.last_reflection || '',
         status: problem.status,
         priority: problem.priority || 'Medium',
+        project_id: problem.project_id || null,
+        goal_id: problem.goal_id || null,
       };
       this.problemFormError = '';
       this.problemModalOpen = true;
@@ -7620,6 +7679,8 @@ function app() {
         last_reflection: this.problemForm.last_reflection.trim(),
         status: this.problemForm.status,
         priority: this.problemForm.priority,
+        project_id: this.problemForm.project_id || null,
+        goal_id: this.problemForm.goal_id || null,
       };
 
       const res = this.problemModalMode === 'create'
