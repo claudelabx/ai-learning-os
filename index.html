@@ -1122,6 +1122,21 @@
     display:block; position:fixed; inset:0; top:var(--header-h);
     background:rgba(0,0,0,.35); z-index:45;
   }
+
+  /* Companion Chat — نشانگر «در حال تایپ» (جایگزین آیکون بی‌سایز loader) */
+  .companion-typing{ display:inline-flex; align-items:center; gap:4px; padding:2px 2px; }
+  .companion-typing-dot{
+    width:6px; height:6px; border-radius:50%;
+    background:var(--color-text-secondary);
+    opacity:.4;
+    animation:companion-typing-bounce 1.1s ease-in-out infinite;
+  }
+  .companion-typing-dot:nth-child(2){ animation-delay:.15s; }
+  .companion-typing-dot:nth-child(3){ animation-delay:.3s; }
+  @keyframes companion-typing-bounce{
+    0%, 60%, 100%{ transform:translateY(0); opacity:.4; }
+    30%{ transform:translateY(-4px); opacity:1; }
+  }
 </style>
 </head>
 <body x-data="app()" x-init="init()">
@@ -1762,10 +1777,15 @@
           <h1>گفتگو با Companion</h1>
           <p class="subtitle">این یک Chatbot عمومی نیست — قبل از هر پاسخ، مسائل باز، اهداف و حافظه‌های تأییدشده‌ات را می‌بیند.</p>
         </div>
-        <button class="btn btn-secondary" @click="clearCompanionChat()" x-show="companionMessages.length > 0">
-          <span x-html="icon('x')"></span>
-          <span>شروع گفتگوی تازه</span>
-        </button>
+        <div style="display:flex; gap:var(--space-s);">
+          <button class="icon-btn" @click="openHistoryModal()" title="تاریخچه‌ی گفتگوها" aria-label="تاریخچه‌ی گفتگوها">
+            <span x-html="icon('archive')"></span>
+          </button>
+          <button class="btn btn-secondary" @click="clearCompanionChat()" x-show="companionMessages.length > 0">
+            <span x-html="icon('x')"></span>
+            <span>شروع گفتگوی تازه</span>
+          </button>
+        </div>
       </div>
 
       <div class="card" style="flex:1; display:flex; flex-direction:column; overflow:hidden; padding:0;">
@@ -1780,10 +1800,10 @@
           </template>
 
           <template x-for="(msg, idx) in companionMessages" :key="msg.id || idx">
-            <div :style="'display:flex; ' + (msg.role === 'user' ? 'justify-content:flex-end;' : 'justify-content:flex-start;')" x-show="msg.role !== 'system'">
-              <div style="max-width:min(75%, 480px); width:fit-content;">
-                <div class="form-helper" style="margin-bottom:2px; font-size:var(--text-caption);" x-show="msg.role === 'proactive'">
-                  <span x-html="icon('sparkles')"></span>
+            <div x-show="msg.role !== 'system'">
+              <div :style="'max-width:min(75%, 480px); width:fit-content; ' + (msg.role === 'user' ? 'margin-inline-start:auto;' : 'margin-inline-end:auto;')">
+                <div class="form-helper" style="margin-bottom:2px; font-size:var(--text-caption); display:flex; align-items:center; gap:4px;" x-show="msg.role === 'proactive'">
+                  <span x-html="icon('sparkles')" style="display:inline-flex; width:14px; height:14px;"></span>
                   <span>Companion جلو آمد</span>
                 </div>
                 <div :style="'padding:8px 12px; border-radius:var(--radius-m); white-space:pre-wrap; font-size:14px; line-height:1.5; width:fit-content; max-width:100%; ' +
@@ -1798,10 +1818,9 @@
             </div>
           </template>
 
-          <div style="display:flex; justify-content:flex-start;" x-show="companionLoading">
-            <div style="padding:8px 12px; border-radius:var(--radius-m); background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); font-size:14px;">
-              <span x-html="icon('loader')"></span>
-              <span>Companion در حال فکر کردن است…</span>
+          <div x-show="companionLoading" style="width:fit-content; margin-inline-end:auto;">
+            <div style="padding:10px 14px; border-radius:var(--radius-m); border-bottom-right-radius:4px; background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); width:fit-content;">
+              <span class="companion-typing"><span class="companion-typing-dot"></span><span class="companion-typing-dot"></span><span class="companion-typing-dot"></span></span>
             </div>
           </div>
 
@@ -1825,6 +1844,73 @@
       </div>
     </div>
   </section>
+
+  <!-- =====================================================================
+       COMPANION CHAT HISTORY — لیست نشست‌های قبلی + نمایش هرکدام به شکل چت
+       (نه گزارشکاری مثل صفحه‌ی «دانش») — طبق درخواست کاربر.
+       ===================================================================== -->
+  <div class="modal-overlay" x-show="historyModalOpen" x-cloak x-transition @keydown.escape.window="closeHistoryModal()">
+    <div class="modal" @click.outside="closeHistoryModal()" role="dialog" aria-modal="true" style="max-width:560px;">
+      <div class="modal-header">
+        <div>
+          <h2 x-text="viewingSessionId ? 'گفتگوی قبلی' : 'تاریخچه‌ی گفتگوها'"></h2>
+          <p x-show="!viewingSessionId">هر نشست جدا نگه داشته شده — روی هرکدوم بزن تا مثل چت ببینیش.</p>
+        </div>
+        <button class="icon-btn" @click="closeHistoryModal()" aria-label="بستن">
+          <span x-html="icon('x')"></span>
+        </button>
+      </div>
+
+      <div class="modal-body" style="max-height:65vh; overflow-y:auto;">
+
+        <!-- لیست نشست‌ها -->
+        <template x-if="!viewingSessionId">
+          <div style="display:flex; flex-direction:column; gap:var(--space-s);">
+            <template x-if="historySessions.length === 0">
+              <div class="empty-state" style="padding-block:var(--space-xl);">
+                <p>هنوز گفتگوی تمام‌شده‌ای نداری.</p>
+              </div>
+            </template>
+            <template x-for="session in historySessions" :key="session.session_id">
+              <button
+                style="display:flex; flex-direction:column; align-items:flex-start; gap:4px; text-align:start; padding:var(--space-m); border-radius:var(--radius-m); border:1px solid var(--color-neutral-border); background:transparent; cursor:pointer; width:100%;"
+                @click="openSessionInHistory(session.session_id)">
+                <strong x-text="session.title"></strong>
+                <span class="form-helper" x-text="jalaliFullLabel(String(session.date).slice(0, 10))"></span>
+              </button>
+            </template>
+          </div>
+        </template>
+
+        <!-- نمایش یک نشست به شکل چت (Read-only) -->
+        <template x-if="viewingSessionId">
+          <div>
+            <button class="btn btn-secondary" style="margin-bottom:var(--space-m);" @click="backToHistoryList()">
+              <span x-html="icon('chevron-right')"></span>
+              <span>بازگشت به لیست</span>
+            </button>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              <template x-for="(msg, idx) in viewingSessionMessages" :key="msg.id || idx">
+                <div>
+                  <div :style="'max-width:min(75%, 420px); width:fit-content; ' + (msg.role === 'user' ? 'margin-inline-start:auto;' : 'margin-inline-end:auto;')">
+                    <div :style="'padding:8px 12px; border-radius:var(--radius-m); white-space:pre-wrap; font-size:14px; line-height:1.5; width:fit-content; max-width:100%; ' +
+                                  (msg.role === 'user'
+                                    ? 'background:var(--color-primary); color:var(--color-on-accent); border-bottom-left-radius:4px;'
+                                    : msg.role === 'proactive'
+                                      ? 'background:var(--color-primary-soft); border:1px solid var(--color-primary); border-bottom-right-radius:4px;'
+                                      : 'background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); border-bottom-right-radius:4px;')">
+                      <span x-text="msg.content"></span>
+                    </div>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+      </div>
+    </div>
+  </div>
 
   <!-- ---------- PROBLEMS ---------- -->
   <section class="view" x-show="currentView === 'problems'" x-cloak>
@@ -7968,39 +8054,77 @@ function app() {
       return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     },
 
-    /** «شروع گفتگوی تازه» — نشست فعلی را به یک Memory پیشنهادی (Candidate) تبدیل
-        می‌کند (طبق سند مادر بند ۱۴/۳۷ — چیزی حذف نمی‌شود، فقط شکلش عوض می‌شود)
-        و صفحه‌ی چت را واقعاً از صفر شروع می‌کند. */
+    /** «شروع گفتگوی تازه» — نشست فعلی بسته می‌شود (ولی حذف نمی‌شود؛ از طریق
+        «تاریخچه‌ی گفتگوها» همچنان به شکل چت قابل مرور است) و یک نشست تازه شروع می‌شود. */
     clearCompanionChat() {
-      const realMessages = this.companionMessages.filter(m => m.role === 'user' || m.role === 'assistant');
-      if (realMessages.length === 0) { this.companionSessionId = this.generateSessionId(); return; }
-
-      const firstUserMsg = realMessages.find(m => m.role === 'user');
-      const title = 'گفتگو: ' + (firstUserMsg ? firstUserMsg.content.slice(0, 60) : 'بدون عنوان');
-      const transcript = realMessages.map(m => `${m.role === 'user' ? 'من' : 'Companion'}: ${m.content}`).join('\n\n');
-
-      StorageLayer.create('notes', {
-        title,
-        description: transcript,
-        type: 'memory',
-        status: 'Draft',
-        recall_priority: 'Medium',
-        source_chat_id: null,
-        memory_confidence: 'Candidate',
-        project_id: null,
-        tags: [],
-        version: 'v1',
-        version_history: [{
-          version: 'v1', description: 'ساخته‌شده خودکار از یک گفتگوی Companion', content_snapshot: transcript,
-          changed_at: new Date().toISOString(), change_type: 'initial',
-        }],
-      });
-
-      this.loadNotes();
       this.companionSessionId = this.generateSessionId();
       this.companionMessages = [];
       this.companionError = '';
-      this.showToast('این گفتگو به‌عنوان یک Memory پیشنهادی ذخیره شد — برای تأیید به «دانش» سر بزن.');
+    },
+
+    /* ====================================================================
+       تاریخچه‌ی گفتگوها — لیست نشست‌های قبلی، هرکدام به شکل چت (نه گزارشکاری
+       مثل Memory) قابل بازکردن است.
+       ==================================================================== */
+    historyModalOpen: false,
+    historySessions: [],
+    viewingSessionId: null,
+    viewingSessionMessages: [],
+
+    openHistoryModal() {
+      const res = StorageLayer.list('companion_messages');
+      const all = res.success
+        ? res.data.filter(m => m.status !== 'Deleted').sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        : [];
+
+      const bySession = {};
+      all.forEach(m => {
+        const sid = m.session_id || 'بدون‌نشست';
+        if (sid === this.companionSessionId) return; // نشست فعلی توی همین لیست معنا نداره
+        if (!bySession[sid]) bySession[sid] = [];
+        bySession[sid].push(m);
+      });
+
+      this.historySessions = Object.keys(bySession)
+        .map(sid => {
+          const msgs = bySession[sid];
+          const firstUser = msgs.find(m => m.role === 'user');
+          const realCount = msgs.filter(m => m.role === 'user' || m.role === 'assistant').length;
+          return {
+            session_id: sid,
+            title: firstUser ? firstUser.content.slice(0, 70) : 'گفتگوی بدون پیام کاربر',
+            date: msgs[msgs.length - 1].created_at,
+            count: realCount,
+          };
+        })
+        .filter(s => s.count > 0)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      this.viewingSessionId = null;
+      this.viewingSessionMessages = [];
+      this.historyModalOpen = true;
+    },
+
+    openSessionInHistory(sessionId) {
+      const res = StorageLayer.list('companion_messages');
+      const all = res.success
+        ? res.data.filter(m => m.status !== 'Deleted').sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+        : [];
+      this.viewingSessionMessages = all
+        .filter(m => m.session_id === sessionId && m.role !== 'system')
+        .map(m => ({ id: m.id, role: m.role, content: m.content }));
+      this.viewingSessionId = sessionId;
+    },
+
+    backToHistoryList() {
+      this.viewingSessionId = null;
+      this.viewingSessionMessages = [];
+    },
+
+    closeHistoryModal() {
+      this.historyModalOpen = false;
+      this.viewingSessionId = null;
+      this.viewingSessionMessages = [];
     },
 
     /* ====================================================================
