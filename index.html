@@ -7317,7 +7317,7 @@ function app() {
       if (!insights.length) return;
 
       const text = insights.map(i => i.text).join(' ');
-      const saveRes = StorageLayer.create('companion_messages', { role: 'proactive', content: text, session_id: this.companionSessionId });
+      const saveRes = StorageLayer.create('companion_messages', { title: text.slice(0, 60), role: 'proactive', content: text, session_id: this.companionSessionId });
       this.companionMessages.push({ role: 'proactive', content: text, id: saveRes.success ? saveRes.data.id : null });
     },
 
@@ -8016,7 +8016,8 @@ function app() {
       const text = this.companionInput.trim();
       if (!text || this.companionLoading) return;
 
-      const userSaveRes = StorageLayer.create('companion_messages', { role: 'user', content: text, session_id: this.companionSessionId });
+      const userSaveRes = StorageLayer.create('companion_messages', { title: text.slice(0, 60), role: 'user', content: text, session_id: this.companionSessionId });
+      if (!userSaveRes.success) this.showToast('این پیام ذخیره نشد: ' + userSaveRes.error.message);
       const userMsg = { role: 'user', content: text, id: userSaveRes.success ? userSaveRes.data.id : null };
       this.companionMessages.push(userMsg);
       this.companionInput = '';
@@ -8033,7 +8034,8 @@ function app() {
           .map(m => ({ title: m.title, description: m.description })),
       };
 
-      // همیشه فقط همین نشست فعلی به AI فرستاده می‌شود — نشست‌های قبلی از قبل به Memory تبدیل شده‌اند.
+      // همیشه فقط همین نشست فعلی به AI فرستاده می‌شود — نشست‌های قبلی بسته شده‌اند
+      // ولی همچنان از طریق «تاریخچه‌ی گفتگوها» قابل مرورند.
       const history = this.companionMessages.map(m => ({ role: m.role, content: m.content }));
       const res = await StorageLayer.askCompanion(history, contextData);
 
@@ -8042,7 +8044,8 @@ function app() {
         this.companionError = res.error.message;
         return;
       }
-      const assistantSaveRes = StorageLayer.create('companion_messages', { role: 'assistant', content: res.data.answer, session_id: this.companionSessionId });
+      const assistantSaveRes = StorageLayer.create('companion_messages', { title: res.data.answer.slice(0, 60), role: 'assistant', content: res.data.answer, session_id: this.companionSessionId });
+      if (!assistantSaveRes.success) this.showToast('این پاسخ ذخیره نشد: ' + assistantSaveRes.error.message);
       this.companionMessages.push({ role: 'assistant', content: res.data.answer, id: assistantSaveRes.success ? assistantSaveRes.data.id : null });
       this.$nextTick(() => {
         const box = document.getElementById('companion-scroll');
