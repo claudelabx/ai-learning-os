@@ -21,14 +21,66 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const DEFAULT_PROVIDER = process.env.AI_DEFAULT_PROVIDER || 'gemini'; // 'gemini' | 'claude' | 'openai' — gemini پیش‌فرض چون رایگانه (بدون کارت بانکی)
 const GATEWAY_SECRET = process.env.GATEWAY_SECRET || ''; // محافظت ساده در برابر استفاده ناخواسته/عمومی
 
-// ---- Prompt Orchestrator ساده (طبق بند 132 سند چشم‌انداز) ----
-// System → Project → Task → Retrieved Knowledge (Notes) → درخواست نهایی
+// ---- Prompt Orchestrator — Context-aware (سند Phase 1، بخش VIII و XIV بند ۳۷:
+// Context Retrieval → Memory Retrieval → Goals/Problems مرتبط → Reasoning) ----
+// ---- Companion Chat — گفتگوی آزاد و Context-aware (سند مادر بخش پنجم و ششم؛
+// سند Phase 1 بخش VIII و بخش XIV بند ۳۷ — Agent Context Pipeline) ----
+function buildCompanionAskPrompt(history, ctx) {
+  const { openProblems, confirmedMemories, goals, activeProjects } = ctx || {};
+
+  const systemLines = [
+    'تو «Companion» هستی — همراه شخصی و هوشمند کاربر داخل اپلیکیشن «Personal Companion».',
+    'تو یک Chatbot عمومی نیستی؛ نقش تو طبق سند مادر پروژه ترکیبی از چهار نقش است: ' +
+      'Assistant (کارها را ساده می‌کند)، Companion (زمینه‌ی زندگی را می‌شناسد)، ' +
+      'Coach (در رشد و اقدام کمک می‌کند) و Thinking Partner (کنار کاربر فکر می‌کند).',
+    'اصول رفتاری‌ات:',
+    '- Context زیر (مسائل باز، اهداف، حافظه‌های تأییدشده، پروژه‌های فعال) واقعیت زندگی کاربر است؛ وقتی مرتبط است صریحاً به آن ارجاع بده، تا کاربر حس کند واقعاً او را می‌شناسی.',
+    '- اگر برای پاسخ دقیق، اطلاعات کافی نداری، صادقانه بگو «مطمئن نیستم» و بپرس، نه اینکه حدس بزنی و وانمود کنی می‌دانی (اصل No fake intelligence).',
+    '- تصمیم نهایی همیشه با خود کاربر است؛ تو کمک می‌کنی بهتر ببیند و بهتر تصمیم بگیرد، نه اینکه به‌جایش تصمیم بگیری.',
+    '- اگر بین چیزی که کاربر گفته و یک هدف/تجربه/محدودیت قبلی‌اش تناقض دیدی، مؤدبانه و بدون تحمیل مطرحش کن (اصل Challenge without Control).',
+    '- کوتاه و مکالمه‌ای بنویس (معمولاً ۲ تا ۶ جمله)، نه یک مقاله. پاسخ را به فارسی بده.',
+  ];
+
+  const ctxLines = [];
+  if (Array.isArray(openProblems) && openProblems.length) {
+    ctxLines.push('## مسائل باز زندگی کاربر (Open Problems)');
+    openProblems.slice(0, 8).forEach((p) => {
+      ctxLines.push(`- ${p.title} [وضعیت: ${p.status}]${p.next_step ? ' — گام بعدی: ' + p.next_step : ''}`);
+    });
+  }
+  if (Array.isArray(goals) && goals.length) {
+    ctxLines.push('\n## اهداف فعال (Goals)');
+    goals.slice(0, 8).forEach((g) => { ctxLines.push(`- ${g.title}`); });
+  }
+  if (Array.isArray(activeProjects) && activeProjects.length) {
+    ctxLines.push('\n## پروژه‌های در جریان');
+    activeProjects.slice(0, 8).forEach((p) => { ctxLines.push(`- ${p.title}`); });
+  }
+  if (Array.isArray(confirmedMemories) && confirmedMemories.length) {
+    ctxLines.push('\n## حافظه‌های تأییدشده درباره‌ی کاربر (Confirmed Memory)');
+    confirmedMemories.slice(0, 10).forEach((m) => {
+      ctxLines.push(`- ${m.title}${m.description ? ': ' + m.description : ''}`);
+    });
+  }
+  if (!ctxLines.length) {
+    ctxLines.push('(هنوز هیچ Context ذخیره‌شده‌ای — مسئله، هدف یا Memory — برای این کاربر ثبت نشده.)');
+  }
+
+  const systemPrompt = systemLines.join('\n') + '\n\n' + ctxLines.join('\n');
+  const userPrompt = history.map((m) => `${m.role === 'user' ? 'کاربر' : 'Companion'}: ${m.content}`).join('\n');
+  return { systemPrompt, userPrompt };
+}
+
 function buildPrompt(context) {
-  const { project, task, recentNotes } = context || {};
+  const { project, task, recentNotes, goal, openProblems, confirmedMemories } = context || {};
 
   const systemPrompt =
-    'تو یک دستیار برنامه‌ریزی و یادگیری هستی که داخل اپلیکیشن «AI Learning OS» به کاربر کمک می‌کنی. ' +
-    'بر اساس اطلاعات پروژه/تسک زیر، فقط یک «گام بعدی» مشخص، عملی و کوتاه (حداکثر ۴-۵ جمله) پیشنهاد بده. ' +
+    'تو «Companion» هستی، دستیار شخصی و context-aware داخل اپلیکیشن «Personal Companion». ' +
+    'نقش تو کمک به فهم بهتر وضعیت و پیشنهاد یک گام بعدی مشخص است، نه فقط اجرای دستور. ' +
+    'بر اساس تمام زمینه‌ای که در ادامه می‌بینی (پروژه، هدف مرتبط، تسک جاری، مسائل باز، حافظه‌های تأییدشده، یادداشت‌های اخیر) ' +
+    'یک «گام بعدی» مشخص، عملی و کوتاه (حداکثر ۴-۵ جمله) پیشنهاد بده. ' +
+    'اگر یکی از مسائل باز یا حافظه‌های داده‌شده واقعاً به این گام مرتبط است، صریحاً به آن اشاره کن — این نشان می‌دهد Context را واقعاً خوانده‌ای. ' +
+    'اگر زمینه‌ی کافی برای یک پیشنهاد مطمئن نداری، به‌جای حدس‌زدن صادقانه بگو که اطلاعات کافی نیست و چه چیزی کم است (اصل «No fake intelligence»). ' +
     'از کلی‌گویی پرهیز کن؛ پیشنهاد باید مستقیماً قابل انجام باشد. پاسخ را به فارسی بده.';
 
   const lines = [];
@@ -38,12 +90,29 @@ function buildPrompt(context) {
     if (project.description) lines.push(`توضیح: ${project.description}`);
     lines.push(`وضعیت: ${project.status || '-'}`);
   }
+  if (goal) {
+    lines.push(`\n## هدف مرتبط (Goal)`);
+    lines.push(`عنوان: ${goal.title || '-'}`);
+    if (goal.description) lines.push(`توضیح: ${goal.description}`);
+  }
   if (task) {
     lines.push(`\n## تسک فعلی`);
     lines.push(`عنوان: ${task.title || '-'}`);
     if (task.description) lines.push(`توضیح: ${task.description}`);
     lines.push(`وضعیت: ${task.status || '-'} | اولویت: ${task.priority || '-'}`);
     if (task.due_date) lines.push(`ددلاین: ${task.due_date}`);
+  }
+  if (Array.isArray(openProblems) && openProblems.length) {
+    lines.push(`\n## مسائل باز (Open Problems) — این مسائل هنوز حل نشده‌اند`);
+    openProblems.slice(0, 5).forEach((p) => {
+      lines.push(`- ${p.title} [وضعیت: ${p.status}]${p.next_step ? ' — گام بعدی ثبت‌شده: ' + p.next_step : ''}`);
+    });
+  }
+  if (Array.isArray(confirmedMemories) && confirmedMemories.length) {
+    lines.push(`\n## حافظه‌های تأییدشده (Confirmed Memory) — این‌ها واقعیت‌های شناخته‌شده درباره‌ی کاربرند`);
+    confirmedMemories.slice(0, 5).forEach((m) => {
+      lines.push(`- ${m.title}${m.description ? ': ' + m.description : ''}`);
+    });
   }
   if (Array.isArray(recentNotes) && recentNotes.length) {
     lines.push(`\n## یادداشت‌های مرتبط اخیر`);
@@ -52,7 +121,7 @@ function buildPrompt(context) {
     });
   }
   lines.push(`\n## درخواست`);
-  lines.push('با توجه به موارد بالا، گام بعدی پیشنهادی‌ات چیست؟');
+  lines.push('با توجه به تمام موارد بالا، گام بعدی پیشنهادی‌ات چیست؟');
 
   return { systemPrompt, userPrompt: lines.join('\n') };
 }
@@ -244,7 +313,7 @@ module.exports = async function handler(req, res) {
       } catch (e) {
         return res.status(502).json({ success: false, error: { code: 'PARSE_ERROR', message: 'پاسخ AI به‌صورت JSON معتبر نبود.' } });
       }
-      if (!['Project', 'Task', 'Note'].includes(parsed.suggested_type)) {
+      if (!['Project', 'Task', 'Problem', 'Note'].includes(parsed.suggested_type)) {
         return res.status(502).json({ success: false, error: { code: 'INVALID_SUGGESTION', message: 'نوع پیشنهادی نامعتبر بود.' } });
       }
       return res.status(200).json({
@@ -390,6 +459,21 @@ module.exports = async function handler(req, res) {
         },
         error: null,
       });
+    }
+
+    if (mode === 'companion-ask') {
+      const ctx = body.context || {};
+      const history = Array.isArray(ctx.history) ? ctx.history : [];
+      const cleanHistory = history
+        .filter((m) => m && typeof m.content === 'string' && m.content.trim() && (m.role === 'user' || m.role === 'assistant'))
+        .map((m) => ({ role: m.role, content: m.content.trim() }))
+        .slice(-12); // فقط چند پیام اخیر — سقف ساده برای جلوگیری از رشد بی‌رویه Prompt
+      if (!cleanHistory.length || cleanHistory[cleanHistory.length - 1].role !== 'user') {
+        return res.status(400).json({ success: false, error: { code: 'VALIDATION', message: 'پیام کاربر خالی است.' } });
+      }
+      const { systemPrompt, userPrompt } = buildCompanionAskPrompt(cleanHistory, ctx);
+      const { text, provider } = await callWithFallback(requestedProvider, systemPrompt, userPrompt, 700);
+      return res.status(200).json({ success: true, data: { answer: text, provider }, error: null });
     }
 
     if (mode !== 'next-step') {
