@@ -1769,7 +1769,7 @@
       </div>
 
       <div class="card" style="flex:1; display:flex; flex-direction:column; overflow:hidden; padding:0;">
-        <div id="companion-scroll" style="flex:1; overflow-y:auto; padding:var(--space-l); display:flex; flex-direction:column; gap:var(--space-m);">
+        <div id="companion-scroll" style="flex:1; overflow-y:auto; padding:var(--space-l); display:flex; flex-direction:column; gap:10px;">
 
           <template x-if="companionMessages.length === 0">
             <div class="empty-state" style="padding-block:var(--space-xxl);">
@@ -1780,37 +1780,26 @@
           </template>
 
           <template x-for="(msg, idx) in companionMessages" :key="msg.id || idx">
-            <div>
-              <template x-if="msg.role === 'system'">
-                <div style="display:flex; align-items:center; gap:var(--space-s); margin-block:var(--space-s); color:var(--color-text-secondary); font-size:var(--text-caption);">
-                  <div style="flex:1; height:1px; background:var(--color-neutral-border);"></div>
+            <div :style="'display:flex; ' + (msg.role === 'user' ? 'justify-content:flex-end;' : 'justify-content:flex-start;')" x-show="msg.role !== 'system'">
+              <div style="max-width:min(75%, 480px); width:fit-content;">
+                <div class="form-helper" style="margin-bottom:2px; font-size:var(--text-caption);" x-show="msg.role === 'proactive'">
+                  <span x-html="icon('sparkles')"></span>
+                  <span>Companion جلو آمد</span>
+                </div>
+                <div :style="'padding:8px 12px; border-radius:var(--radius-m); white-space:pre-wrap; font-size:14px; line-height:1.5; width:fit-content; max-width:100%; ' +
+                              (msg.role === 'user'
+                                ? 'background:var(--color-primary); color:var(--color-on-accent); border-bottom-left-radius:4px;'
+                                : msg.role === 'proactive'
+                                  ? 'background:var(--color-primary-soft); border:1px solid var(--color-primary); border-bottom-right-radius:4px;'
+                                  : 'background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); border-bottom-right-radius:4px;')">
                   <span x-text="msg.content"></span>
-                  <div style="flex:1; height:1px; background:var(--color-neutral-border);"></div>
                 </div>
-              </template>
-              <template x-if="msg.role !== 'system'">
-                <div :style="'display:flex; ' + (msg.role === 'user' ? 'justify-content:flex-end;' : 'justify-content:flex-start;')">
-                  <div style="max-width:75%;">
-                    <div class="form-helper" style="margin-bottom:4px;" x-show="msg.role === 'proactive'">
-                      <span x-html="icon('sparkles')"></span>
-                      <span>Companion جلو آمد</span>
-                    </div>
-                    <div :style="'padding:var(--space-m); border-radius:var(--radius-l); white-space:pre-wrap; ' +
-                                  (msg.role === 'user'
-                                    ? 'background:var(--color-primary); color:var(--color-on-accent); border-bottom-left-radius:var(--radius-s);'
-                                    : msg.role === 'proactive'
-                                      ? 'background:var(--color-primary-soft); border:1px solid var(--color-primary); border-bottom-right-radius:var(--radius-s);'
-                                      : 'background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); border-bottom-right-radius:var(--radius-s);')">
-                      <span x-text="msg.content"></span>
-                    </div>
-                  </div>
-                </div>
-              </template>
+              </div>
             </div>
           </template>
 
           <div style="display:flex; justify-content:flex-start;" x-show="companionLoading">
-            <div style="padding:var(--space-m); border-radius:var(--radius-l); background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border);">
+            <div style="padding:8px 12px; border-radius:var(--radius-m); background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); font-size:14px;">
               <span x-html="icon('loader')"></span>
               <span>Companion در حال فکر کردن است…</span>
             </div>
@@ -6668,7 +6657,8 @@ function app() {
     // این تاریخچه فقط در حافظه‌ی مرورگر است (طبق «Suggest > Execute» — سند
     // Phase 1 قانون ۷ — فعلاً هیچ چیزی خودکار به Memory/Graph نوشته نمی‌شود).
     // ====================================================================
-    companionMessages: [],  // { role: 'user'|'assistant'|'system'|'proactive', content }
+    companionMessages: [],  // { role: 'user'|'assistant'|'proactive', content } — فقط نشست فعلی
+    companionSessionId: null,
     companionInput: '',
     companionLoading: false,
     companionError: '',
@@ -7241,7 +7231,7 @@ function app() {
       if (!insights.length) return;
 
       const text = insights.map(i => i.text).join(' ');
-      const saveRes = StorageLayer.create('companion_messages', { role: 'proactive', content: text });
+      const saveRes = StorageLayer.create('companion_messages', { role: 'proactive', content: text, session_id: this.companionSessionId });
       this.companionMessages.push({ role: 'proactive', content: text, id: saveRes.success ? saveRes.data.id : null });
     },
 
@@ -7843,15 +7833,18 @@ function app() {
       this.problems = res.success ? res.data : [];
     },
 
-    /** بارگذاری تاریخچه‌ی واقعی گفتگو با Companion از دیتابیس (سند Phase 1، Day 6/Companion Chat) */
+    /** بارگذاری «نشست فعلی» گفتگو با Companion — فقط پیام‌های بعد از آخرین «شروع
+        گفتگوی تازه»؛ نشست‌های قبلی به Memory تبدیل شده‌اند و اینجا لود نمی‌شوند. */
     loadCompanionMessages() {
       const res = StorageLayer.list('companion_messages');
-      this.companionMessages = res.success
-        ? res.data
-            .filter(m => m.status !== 'Deleted')
-            .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
-            .map(m => ({ id: m.id, role: m.role, content: m.content }))
+      const all = res.success
+        ? res.data.filter(m => m.status !== 'Deleted').sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
         : [];
+      const lastSessionId = all.length ? all[all.length - 1].session_id : null;
+      this.companionSessionId = lastSessionId || this.generateSessionId();
+      this.companionMessages = all
+        .filter(m => m.session_id === this.companionSessionId)
+        .map(m => ({ id: m.id, role: m.role, content: m.content }));
     },
 
     problemStatusMeta(value) { return this.problemStatusOptions.find(o => o.value === value) || this.problemStatusOptions[0]; },
@@ -7937,7 +7930,7 @@ function app() {
       const text = this.companionInput.trim();
       if (!text || this.companionLoading) return;
 
-      const userSaveRes = StorageLayer.create('companion_messages', { role: 'user', content: text });
+      const userSaveRes = StorageLayer.create('companion_messages', { role: 'user', content: text, session_id: this.companionSessionId });
       const userMsg = { role: 'user', content: text, id: userSaveRes.success ? userSaveRes.data.id : null };
       this.companionMessages.push(userMsg);
       this.companionInput = '';
@@ -7954,9 +7947,8 @@ function app() {
           .map(m => ({ title: m.title, description: m.description })),
       };
 
-      // فقط پیام‌های همین «نشست» (بعد از آخرین مرز «شروع گفتگوی تازه») به AI فرستاده می‌شود —
-      // نه کل تاریخچه‌ی همیشگی.
-      const history = this.currentSessionMessages.map(m => ({ role: m.role, content: m.content }));
+      // همیشه فقط همین نشست فعلی به AI فرستاده می‌شود — نشست‌های قبلی از قبل به Memory تبدیل شده‌اند.
+      const history = this.companionMessages.map(m => ({ role: m.role, content: m.content }));
       const res = await StorageLayer.askCompanion(history, contextData);
 
       this.companionLoading = false;
@@ -7964,7 +7956,7 @@ function app() {
         this.companionError = res.error.message;
         return;
       }
-      const assistantSaveRes = StorageLayer.create('companion_messages', { role: 'assistant', content: res.data.answer });
+      const assistantSaveRes = StorageLayer.create('companion_messages', { role: 'assistant', content: res.data.answer, session_id: this.companionSessionId });
       this.companionMessages.push({ role: 'assistant', content: res.data.answer, id: assistantSaveRes.success ? assistantSaveRes.data.id : null });
       this.$nextTick(() => {
         const box = document.getElementById('companion-scroll');
@@ -7972,18 +7964,43 @@ function app() {
       });
     },
 
-    /** پیام‌های «نشست» فعلی — یعنی بعد از آخرین مرز شروع‌تازه؛ برای Context ارسالی به AI */
-    get currentSessionMessages() {
-      const lastBreak = this.companionMessages.map(m => m.role).lastIndexOf('system');
-      return lastBreak === -1 ? this.companionMessages : this.companionMessages.slice(lastBreak + 1);
+    generateSessionId() {
+      return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     },
 
-    /** «شروع گفتگوی تازه» — چیزی حذف نمی‌شود (طبق اصل شفافیت Memory در سند مادر)،
-        فقط یک مرز ثبت می‌شود تا Context ارسالی به AI از اینجا به بعد از صفر شروع شود. */
+    /** «شروع گفتگوی تازه» — نشست فعلی را به یک Memory پیشنهادی (Candidate) تبدیل
+        می‌کند (طبق سند مادر بند ۱۴/۳۷ — چیزی حذف نمی‌شود، فقط شکلش عوض می‌شود)
+        و صفحه‌ی چت را واقعاً از صفر شروع می‌کند. */
     clearCompanionChat() {
-      const saveRes = StorageLayer.create('companion_messages', { role: 'system', content: '— گفتگوی تازه —' });
-      this.companionMessages.push({ role: 'system', content: '— گفتگوی تازه —', id: saveRes.success ? saveRes.data.id : null });
+      const realMessages = this.companionMessages.filter(m => m.role === 'user' || m.role === 'assistant');
+      if (realMessages.length === 0) { this.companionSessionId = this.generateSessionId(); return; }
+
+      const firstUserMsg = realMessages.find(m => m.role === 'user');
+      const title = 'گفتگو: ' + (firstUserMsg ? firstUserMsg.content.slice(0, 60) : 'بدون عنوان');
+      const transcript = realMessages.map(m => `${m.role === 'user' ? 'من' : 'Companion'}: ${m.content}`).join('\n\n');
+
+      StorageLayer.create('notes', {
+        title,
+        description: transcript,
+        type: 'memory',
+        status: 'Draft',
+        recall_priority: 'Medium',
+        source_chat_id: null,
+        memory_confidence: 'Candidate',
+        project_id: null,
+        tags: [],
+        version: 'v1',
+        version_history: [{
+          version: 'v1', description: 'ساخته‌شده خودکار از یک گفتگوی Companion', content_snapshot: transcript,
+          changed_at: new Date().toISOString(), change_type: 'initial',
+        }],
+      });
+
+      this.loadNotes();
+      this.companionSessionId = this.generateSessionId();
+      this.companionMessages = [];
       this.companionError = '';
+      this.showToast('این گفتگو به‌عنوان یک Memory پیشنهادی ذخیره شد — برای تأیید به «دانش» سر بزن.');
     },
 
     /* ====================================================================
