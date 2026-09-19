@@ -1172,13 +1172,6 @@
     <button class="icon-btn" @click="showToast('اعلان جدیدی وجود ندارد.')" aria-label="اعلان‌ها" title="اعلان‌ها">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
     </button>
-    <!-- زیرفاز 1.5-د (سند 012): Streak در هدر — فقط نمایش؛ محاسبه همان learningStreak موجود Analytics -->
-    <button class="header-streak" :class="{zero: learningStreak === 0}" @click="goTo(moduleById('analytics'))"
-            :title="'استریک یادگیری: ' + learningStreak + ' روز پیاپی — کلیک برای جزئیات در تحلیل‌ها'"
-            aria-label="استریک یادگیری">
-      <span x-html="icon('flame')"></span>
-      <span class="streak-count en" x-text="learningStreak"></span>
-    </button>
     <!-- زیرفاز 1.5-هـ: سوییچر تم — منوی انتخاب با پیش‌نمایش رنگی (قانون ۳ سند 007 نسخه 3.0) -->
     <div class="theme-menu-wrap" @click.outside="themeMenuOpen = false">
       <button class="icon-btn" @click="themeMenuOpen = !themeMenuOpen"
@@ -1511,55 +1504,10 @@
       </div>
     </div>
 
-    <!-- ۳) نوار هفتگی — هفته تقویمی شمسی (شنبه تا جمعه)، jalaali-js موجود -->
-    <div class="card">
-      <div class="section-title-row" style="margin-bottom:var(--space-m);">
-        <h2>نوار هفتگی</h2>
-        <span class="form-helper" x-text="weekRangeLabel"></span>
-      </div>
-      <div class="week-bar">
-        <template x-for="day in weekDays" :key="'wd-' + day.date">
-          <button class="week-day" :class="{ today: day.isToday, past: day.isPast }" @click="openDayPlan(day.date)" :aria-label="day.weekday + ' ' + jalaliFullLabel(day.date)">
-            <span class="week-day-name" x-text="day.weekday"></span>
-            <span class="week-day-num en" x-text="day.jd"></span>
-            <span class="week-day-counts">
-              <span class="week-count" x-show="day.plannedCount > 0" title="تسک برنامه‌ریزی‌شده">
-                <span x-html="icon('list-checks')"></span><span class="en" x-text="day.plannedCount"></span>
-              </span>
-              <span class="week-count deadline" x-show="day.deadlineCount > 0" title="ددلاین">
-                <span x-html="icon('flag')"></span><span class="en" x-text="day.deadlineCount"></span>
-              </span>
-            </span>
-          </button>
-        </template>
-      </div>
-    </div>
+    <!-- ۳) نوار هفتگی: حذف شد — نمای تقویمی سنتی که با روح Companion (Clarity over
 
-    <!-- ۴) عقب‌افتاده از برنامه — planned_date گذشته و ناتمام؛ وضعیت هرگز خودکار تغییر نمی‌کند (Human in Control) -->
-    <div class="card" x-show="behindPlanTasks.length > 0" x-cloak>
-      <div class="section-title-row" style="margin-bottom:var(--space-m);">
-        <h2>عقب‌افتاده از برنامه</h2>
-        <span class="badge badge-warning en" x-text="behindPlanTasks.length"></span>
-      </div>
-      <div class="plan-list">
-        <template x-for="task in behindPlanTasks" :key="'behind-' + task.id">
-          <div class="plan-item">
-            <div class="plan-item-main">
-              <span class="plan-item-title" x-text="task.title"></span>
-              <span class="plan-item-meta">
-                <span x-text="_projectTitle(task.project_id)"></span>
-                <span x-text="'برنامه: ' + jalaliFullLabel(String(task.planned_date).slice(0, 10))"></span>
-              </span>
-            </div>
-            <!-- اقدام یک‌کلیکی: فقط planned_date = امروز؛ status دست‌نخورده -->
-            <button class="btn btn-secondary" @click="moveToToday(task)">
-              <span x-html="icon('calendar')"></span>
-              <span>انتقال به امروز</span>
-            </button>
-          </div>
-        </template>
-      </div>
-    </div>
+    <!-- ۳) عقب‌افتاده از برنامه: حذف شد — با ویجت Proactive (ددلاین نزدیک) جایگزین شده،
+         که دقیقاً همان هشدار را به شکل مرتبط‌تر با Context می‌دهد، نه یک شمارنده‌ی خام. -->
 
     <!-- زیرفاز 1.5-الف (سند 012): میانبر ثبت سریع ژورنال — نیمه دوم ستاره قطبی -->
     <button class="card journal-shortcut" @click="openTodayOrCreate()">
@@ -1570,23 +1518,6 @@
       </div>
       <span class="journal-shortcut-arrow" x-html="icon('chevron-left')"></span>
     </button>
-
-    <div class="card">
-      <div class="section-title-row" style="margin-bottom:var(--space-m);">
-        <h2>پیشرفت مسیر یادگیری</h2>
-        <span class="badge badge-progress">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 6"/><polyline points="15 6 21 6 21 12"/></svg>
-          <span class="en" x-text="overallLearningProgress + '٪'"></span>
-        </span>
-      </div>
-      <div class="progress-track"><div class="progress-fill" :style="'width:' + overallLearningProgress + '%'"></div></div>
-      <p style="margin-top:var(--space-s); font-size:var(--text-caption); color:var(--color-text-secondary);" x-show="roadmaps.length === 0">
-        زنجیره Roadmap → Module → Lesson → Practice → Project هنوز آغاز نشده است.
-      </p>
-      <p style="margin-top:var(--space-s); font-size:var(--text-caption); color:var(--color-text-secondary);" x-show="roadmaps.length > 0">
-        بر اساس نسبت Lessonها و Practiceهای «تکمیل‌شده» (با وزن مساوی) در همهٔ Roadmapها محاسبه می‌شود.
-      </p>
-    </div>
 
     <!-- زیرفاز 1.5-الف (سند 012): KPIهای قبلی — منتقل‌شده به یک ردیف فشرده، با مقادیر واقعی (بدون حذف) -->
     <div class="card kpi-strip">
@@ -2555,8 +2486,25 @@
       <div class="module-toolbar">
         <div>
           <h1>دانش</h1>
-          <p class="subtitle">پایگاه دانش شخصی — یادداشت‌های ساده و Memoryهای استخراج‌شده از گفتگوها (سند 002 و 005).</p>
+          <p class="subtitle">پایگاه دانش شخصی — یادداشت‌ها، Memoryهای استخراج‌شده از گفتگوها، و مسیرهای یادگیری، همه زیر یک سقف.</p>
         </div>
+      </div>
+
+      <!-- سوییچر تب — یادگیری دیگر منوی جدا نیست، زیرمجموعه‌ی «دانش» است -->
+      <div class="filter-bar">
+        <button class="filter-chip" :class="{active: knowledgeTab === 'notes'}" @click="knowledgeTab = 'notes'">
+          <span x-html="icon('library')"></span>
+          <span>یادداشت‌ها و Memory</span>
+        </button>
+        <button class="filter-chip" :class="{active: knowledgeTab === 'learning'}" @click="knowledgeTab = 'learning'; loadRoadmaps();">
+          <span x-html="icon('graduation-cap')"></span>
+          <span>یادگیری</span>
+        </button>
+      </div>
+
+    <div x-show="knowledgeTab === 'notes'" style="display:flex; flex-direction:column; gap:var(--space-xl);">
+      <div class="module-toolbar">
+        <div></div>
         <button class="btn btn-primary" @click="openCreateNote()">
           <span x-html="icon('plus')"></span>
           <span>Note جدید</span>
@@ -2662,387 +2610,11 @@
         </template>
       </div>
     </div>
-  </section>
 
-  <!-- ---------- PROMPT HUB ---------- -->
-  <section class="view" x-show="currentView === 'prompt-hub'" x-cloak>
-    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
-      <div class="module-toolbar">
-        <div>
-          <h1>پرامپت‌ها</h1>
-          <p class="subtitle">مدیریت و نسخه‌بندی Promptها با ارتباط به پروژه‌ها — سند 002 و 005.</p>
-        </div>
-        <button class="btn btn-primary" @click="openCreatePrompt()">
-          <span x-html="icon('plus')"></span>
-          <span>Prompt جدید</span>
-        </button>
-      </div>
-
-      <template x-if="prompts.length === 0">
-        <div class="card">
-          <div class="empty-state" style="padding-block:var(--space-xxl);">
-            <div class="icon-wrap" x-html="icon('sparkles')"></div>
-            <strong>هنوز Promptی ثبت نشده</strong>
-            <p>کتابخانه شخصی پرامپت‌هایت را از همین‌جا شروع کن.</p>
-            <div class="empty-actions">
-              <button class="btn btn-primary" @click="openCreatePrompt()"><span x-html="icon('sparkles')"></span><span>اولین پرامپت را بساز</span></button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <div class="note-grid" x-show="prompts.length > 0">
-        <template x-for="prompt in sortedPrompts" :key="prompt.id">
-          <div class="card prompt-card" @click="openEditPrompt(prompt)">
-            <div class="prompt-card-top">
-              <h3 class="prompt-card-title" x-text="prompt.title"></h3>
-              <div class="prompt-card-actions" @click.stop>
-                <button class="mini-icon-btn" @click="openEditPrompt(prompt)" title="ویرایش" aria-label="ویرایش Prompt">
-                  <span x-html="icon('pencil')"></span>
-                </button>
-                <button class="mini-icon-btn danger" @click="askDeletePrompt(prompt)" title="حذف" aria-label="حذف Prompt">
-                  <span x-html="icon('trash-2')"></span>
-                </button>
-              </div>
-            </div>
-
-            <p class="prompt-card-desc" x-show="prompt.description" x-text="prompt.description"></p>
-            <div class="prompt-card-content" x-text="prompt.content || 'بدون محتوا'"></div>
-
-            <div class="note-card-badges">
-              <span class="badge" :class="projectStatusMeta(prompt.status).badge">
-                <span x-html="icon(projectStatusMeta(prompt.status).icon)"></span>
-                <span x-text="projectStatusMeta(prompt.status).label"></span>
-              </span>
-              <template x-for="tag in prompt.tags" :key="tag">
-                <span class="badge badge-muted" x-text="tag"></span>
-              </template>
-            </div>
-
-            <div class="note-card-footer">
-              <span class="version-pill en" x-text="prompt.version"></span>
-              <span class="project-chip" x-show="(prompt.project_ids || []).length > 0">
-                <span x-html="icon('folder-kanban')"></span>
-                <span class="en" x-text="(prompt.project_ids || []).length"></span>
-              </span>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- RESOURCES ---------- -->
-  <section class="view" x-show="currentView === 'resources'" x-cloak>
-    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
-      <div class="module-toolbar">
-        <div>
-          <h1>منابع</h1>
-          <p class="subtitle">مدیریت منابع آموزشی (کتاب، مقاله، ویدیو، دوره، مخزن کد) — سند 002.</p>
-        </div>
-        <button class="btn btn-primary" @click="openCreateResource()">
-          <span x-html="icon('plus')"></span>
-          <span>Resource جدید</span>
-        </button>
-      </div>
-
-      <template x-if="resources.length === 0">
-        <div class="card">
-          <div class="empty-state" style="padding-block:var(--space-xxl);">
-            <div class="icon-wrap" x-html="icon('book-open')"></div>
-            <strong>هنوز Resourceای ثبت نشده</strong>
-            <p>هر دوره، کتاب یا لینکی که به کارت می‌آید، اینجا ماندگار می‌شود.</p>
-            <div class="empty-actions">
-              <button class="btn btn-primary" @click="openCreateResource()"><span x-html="icon('book-open')"></span><span>اولین منبع را ثبت کن</span></button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <div class="note-grid" x-show="resources.length > 0">
-        <template x-for="resource in sortedResources" :key="resource.id">
-          <div class="card note-card" @click="openEditResource(resource)">
-            <div class="note-card-top">
-              <div class="resource-card-title-group">
-                <span class="resource-type-icon"><span x-html="icon(resourceTypeMeta(resource.type).icon)"></span></span>
-                <h3 class="note-card-title" x-text="resource.title"></h3>
-              </div>
-              <div class="note-card-actions" @click.stop>
-                <button class="mini-icon-btn" x-show="resource.storage_path || resource.url" @click="openResourceFile(resource)" title="باز کردن فایل/لینک" aria-label="باز کردن فایل یا لینک">
-                  <span x-html="icon('paperclip')"></span>
-                </button>
-                <button class="mini-icon-btn" @click="openEditResource(resource)" title="ویرایش" aria-label="ویرایش Resource">
-                  <span x-html="icon('pencil')"></span>
-                </button>
-                <button class="mini-icon-btn danger" @click="askDeleteResource(resource)" title="حذف" aria-label="حذف Resource">
-                  <span x-html="icon('trash-2')"></span>
-                </button>
-              </div>
-            </div>
-
-            <p class="note-card-preview" x-show="resource.description" x-text="resource.description"></p>
-            <p class="resource-card-author" x-show="resource.author">
-              <span x-html="icon('user')"></span>
-              <span x-text="resource.author"></span>
-            </p>
-
-            <div class="note-card-badges">
-              <span class="badge badge-progress">
-                <span x-html="icon(resourceTypeMeta(resource.type).icon)"></span>
-                <span x-text="resourceTypeMeta(resource.type).label"></span>
-              </span>
-              <span class="badge" :class="projectStatusMeta(resource.status).badge">
-                <span x-html="icon(projectStatusMeta(resource.status).icon)"></span>
-                <span x-text="projectStatusMeta(resource.status).label"></span>
-              </span>
-              <template x-for="tag in resource.tags" :key="tag">
-                <span class="badge badge-muted" x-text="tag"></span>
-              </template>
-            </div>
-
-            <div class="note-card-footer">
-              <span class="version-pill en" x-text="resource.version"></span>
-              <span style="display:flex; align-items:center; gap:var(--space-s);">
-                <span class="project-chip" x-show="projectTitleById(resource.project_id)">
-                  <span x-html="icon('folder-kanban')"></span>
-                  <span x-text="projectTitleById(resource.project_id)"></span>
-                </span>
-                <a x-show="resource.url" :href="resource.url" target="_blank" rel="noopener" @click.stop class="project-chip">
-                  <span x-html="icon('link-2')"></span>
-                  <span>لینک</span>
-                </a>
-              </span>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- RESOURCE BOXES (کتابخانهٔ منابع — دسته‌بندی موضوعی، جدا از ماژول Resources قدیمی) ---------- -->
-  <section class="view" x-show="currentView === 'resource-boxes'" x-cloak>
-
-    <!-- ===== فهرست باکس‌ها ===== -->
-    <template x-if="boxView === 'list'">
-      <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
-        <div class="module-toolbar">
-          <div>
-            <h1>کتابخانهٔ منابع</h1>
-            <p class="subtitle">منابعت رو دسته‌بندی موضوعی کن — هر باکس یک موضوع مستقل (درس، المپیاد، هر چیز دیگه).</p>
-          </div>
-          <button class="btn btn-primary" @click="openCreateBox()">
-            <span x-html="icon('plus')"></span>
-            <span>باکس جدید</span>
-          </button>
-        </div>
-
-        <template x-if="resourceBoxes.length === 0">
-          <div class="card">
-            <div class="empty-state" style="padding-block:var(--space-xxl);">
-              <div class="icon-wrap" x-html="icon('library')"></div>
-              <strong>هنوز باکسی نساختی</strong>
-              <p>یک باکس بساز، بعد منابعش رو داخلش اضافه کن.</p>
-              <div class="empty-actions">
-                <button class="btn btn-primary" @click="openCreateBox()"><span x-html="icon('plus')"></span><span>اولین باکس را بساز</span></button>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <div class="project-grid" x-show="resourceBoxes.length > 0">
-          <template x-for="box in sortedResourceBoxes" :key="box.id">
-            <div class="card project-card" @click="openBox(box)">
-              <div class="project-card-top">
-                <h3 class="project-card-title" x-text="box.title"></h3>
-                <div class="project-card-actions" @click.stop>
-                  <button class="mini-icon-btn" @click="openEditBox(box)" title="ویرایش باکس" aria-label="ویرایش باکس">
-                    <span x-html="icon('pencil')"></span>
-                  </button>
-                  <button class="mini-icon-btn danger" @click="askDeleteBox(box)" title="حذف باکس" aria-label="حذف باکس">
-                    <span x-html="icon('trash-2')"></span>
-                  </button>
-                </div>
-              </div>
-              <p class="project-card-desc" x-text="box.description || 'بدون توضیح'"></p>
-              <div class="project-card-badges">
-                <span class="badge badge-progress">
-                  <span x-html="icon('book-open')"></span>
-                  <span class="en" x-text="resourcesForBox(box.id).length"></span>
-                  <span>منبع</span>
-                </span>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-    </template>
-
-    <!-- ===== داخل یک باکس ===== -->
-    <template x-if="boxView === 'detail' && activeBox">
-      <div style="display:flex; flex-direction:column; gap:var(--space-l);">
-        <button class="back-link" @click="backToBoxes()">
-          <span x-html="icon('chevron-right')"></span>
-          <span>بازگشت به باکس‌ها</span>
-        </button>
-
-        <div class="module-toolbar">
-          <div>
-            <h1 x-text="activeBox.title"></h1>
-            <p class="subtitle" x-text="activeBox.description || 'بدون توضیح'"></p>
-          </div>
-          <button class="btn btn-primary" @click="openCreateBoxResource()">
-            <span x-html="icon('plus')"></span>
-            <span>منبع جدید</span>
-          </button>
-        </div>
-
-        <template x-if="resourcesForBox(activeBoxId).length === 0">
-          <div class="card">
-            <div class="empty-state" style="padding-block:var(--space-xxl);">
-              <div class="icon-wrap" x-html="icon('book-open')"></div>
-              <strong>هنوز منبعی در این باکس نیست</strong>
-              <p>جزوه، لینک، ویدیو یا هر منبعی که داری، همین‌جا اضافه کن.</p>
-              <div class="empty-actions">
-                <button class="btn btn-primary" @click="openCreateBoxResource()"><span x-html="icon('plus')"></span><span>اولین منبع را ثبت کن</span></button>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <div class="note-grid" x-show="resourcesForBox(activeBoxId).length > 0">
-          <template x-for="resource in resourcesForBox(activeBoxId)" :key="resource.id">
-            <div class="card note-card" @click="openEditBoxResource(resource)">
-              <div class="note-card-top">
-                <div class="resource-card-title-group">
-                  <span class="resource-type-icon"><span x-html="icon(resourceTypeMeta(resource.type).icon)"></span></span>
-                  <h3 class="note-card-title" x-text="resource.title"></h3>
-                </div>
-                <div class="note-card-actions" @click.stop>
-                  <button class="mini-icon-btn" x-show="resource.storage_path || resource.url" @click="openResourceFile(resource)" title="باز کردن فایل/لینک" aria-label="باز کردن فایل یا لینک">
-                    <span x-html="icon('paperclip')"></span>
-                  </button>
-                  <button class="mini-icon-btn" @click="openEditBoxResource(resource)" title="ویرایش" aria-label="ویرایش منبع">
-                    <span x-html="icon('pencil')"></span>
-                  </button>
-                  <button class="mini-icon-btn danger" @click="askDeleteBoxResource(resource)" title="حذف" aria-label="حذف منبع">
-                    <span x-html="icon('trash-2')"></span>
-                  </button>
-                </div>
-              </div>
-
-              <p class="note-card-preview" x-show="resource.description" x-text="resource.description"></p>
-              <p class="resource-card-author" x-show="resource.author">
-                <span x-html="icon('user')"></span>
-                <span x-text="resource.author"></span>
-              </p>
-
-              <div class="note-card-badges">
-                <span class="badge badge-progress">
-                  <span x-html="icon(resourceTypeMeta(resource.type).icon)"></span>
-                  <span x-text="resourceTypeMeta(resource.type).label"></span>
-                </span>
-                <template x-for="tag in resource.tags" :key="tag">
-                  <span class="badge badge-muted" x-text="tag"></span>
-                </template>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-    </template>
-  </section>
-
-  <!-- ---------- JOURNAL ---------- -->
-  <section class="view" x-show="currentView === 'journal'" x-cloak>
-    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
-      <div class="module-toolbar">
-        <div>
-          <h1>ژورنال</h1>
-          <p class="subtitle">ثبت روزانه: حال‌وهوا، یادگیری، مشکلات/راه‌حل‌ها، ساعات کار، گفتگوهای AI — سند 002.</p>
-        </div>
-        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
-          <button class="btn btn-primary" @click="openTodayOrCreate()">
-            <span x-html="icon(todaysJournalEntry ? 'pencil' : 'plus')"></span>
-            <span x-text="todaysJournalEntry ? 'ویرایش ثبت امروز' : 'ثبت امروز'"></span>
-          </button>
-          <button class="btn btn-secondary" @click="openCreateJournalEntry()">
-            <span x-html="icon('plus')"></span>
-            <span>ثبت برای تاریخ دیگر</span>
-          </button>
-        </div>
-      </div>
-
-      <template x-if="journalEntries.length === 0">
-        <div class="card">
-          <div class="empty-state" style="padding-block:var(--space-xxl);">
-            <div class="icon-wrap" x-html="icon('notebook-pen')"></div>
-            <strong>هنوز ثبتی وجود نداره</strong>
-            <p>نیمه دوم ستاره قطبی: هر شب بدانی چه یاد گرفتی.</p>
-            <div class="empty-actions">
-              <button class="btn btn-primary" @click="openTodayOrCreate()"><span x-html="icon('notebook-pen')"></span><span>امروز چی یاد گرفتی؟</span></button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <div class="journal-list" x-show="journalEntries.length > 0">
-        <template x-for="entry in sortedJournalEntries" :key="entry.id">
-          <div class="card journal-entry-card" @click="openEditJournalEntry(entry)">
-            <div class="journal-date-block">
-              <span class="weekday" x-text="jalaliWeekday(entry.date)"></span>
-              <span class="day en" x-text="jalaliPartsOf(entry.date).jd"></span>
-              <span class="month" x-text="jalaliMonthNames[jalaliPartsOf(entry.date).jm - 1]"></span>
-              <span class="mood-ring" :style="'border-color:' + moodColorVar(entry.mood)">
-                <span x-text="moodMeta(entry.mood).emoji"></span>
-              </span>
-            </div>
-
-            <div class="journal-entry-body">
-              <div class="journal-entry-top">
-                <h3 class="journal-entry-title" x-text="entry.title"></h3>
-                <div class="note-card-actions" @click.stop>
-                  <button class="mini-icon-btn" @click="openEditJournalEntry(entry)" title="ویرایش" aria-label="ویرایش ژورنال">
-                    <span x-html="icon('pencil')"></span>
-                  </button>
-                  <button class="mini-icon-btn danger" @click="askDeleteJournalEntry(entry)" title="حذف" aria-label="حذف ژورنال">
-                    <span x-html="icon('trash-2')"></span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="journal-stats-row">
-                <span class="stat mood-stat">
-                  <span class="mood-emoji" x-text="moodMeta(entry.mood).emoji"></span>
-                  <span x-text="moodMeta(entry.mood).label"></span>
-                </span>
-                <span class="stat" x-show="(entry.time_log_ids || []).length > 0">
-                  <span x-html="icon('timer')"></span>
-                  <span x-text="formatMinutes(journalEntryTotalMinutes(entry))"></span>
-                </span>
-                <span class="stat" x-show="projectTitleById(entry.project_id)">
-                  <span x-html="icon('folder-kanban')"></span>
-                  <span x-text="projectTitleById(entry.project_id)"></span>
-                </span>
-              </div>
-
-              <div class="journal-entry-divider"></div>
-
-              <p class="journal-entry-preview" x-text="entry.learnings || entry.challenges_solutions || 'بدون یادداشت متنی'"></p>
-
-              <div class="note-card-badges" x-show="(entry.tags || []).length > 0">
-                <template x-for="tag in entry.tags" :key="tag">
-                  <span class="badge badge-muted" x-text="tag"></span>
-                </template>
-              </div>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- LEARNING ---------- -->
-  <section class="view" x-show="currentView === 'learning'" x-cloak>
+    <!-- ==================================================================
+         یادگیری — زیرمجموعه‌ی «دانش» (قبلاً منوی جدا بود، طبق درخواست کاربر ادغام شد)
+         ================================================================== -->
+    <div x-show="knowledgeTab === 'learning'" style="display:flex; flex-direction:column; gap:var(--space-xl);">
 
     <!-- ===== فهرست Roadmapها ===== -->
     <template x-if="learningView === 'list'">
@@ -3277,215 +2849,93 @@
       </div>
     </template>
 
+    </div>
+
+    </div>
   </section>
 
-  <!-- ---------- AI CHATS ---------- -->
-  <section class="view" x-show="currentView === 'ai-chats'" x-cloak>
+  <!-- ---------- JOURNAL ---------- -->
+  <section class="view" x-show="currentView === 'journal'" x-cloak>
     <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
       <div class="module-toolbar">
         <div>
-          <h1>گفتگوهای AI</h1>
-          <p class="subtitle">آرشیو گفتگوها؛ هر گفتگو قابل تبدیل به دانش قابل‌استفاده است — سند 002 و 008.</p>
+          <h1>ژورنال</h1>
+          <p class="subtitle">ثبت روزانه: حال‌وهوا، یادگیری، مشکلات/راه‌حل‌ها، ساعات کار، گفتگوهای AI — سند 002.</p>
         </div>
-        <button class="btn btn-primary" @click="openCreateChat()">
-          <span x-html="icon('plus')"></span>
-          <span>Chat جدید</span>
-        </button>
+        <div style="display:flex; gap:var(--space-s); flex-wrap:wrap;">
+          <button class="btn btn-primary" @click="openTodayOrCreate()">
+            <span x-html="icon(todaysJournalEntry ? 'pencil' : 'plus')"></span>
+            <span x-text="todaysJournalEntry ? 'ویرایش ثبت امروز' : 'ثبت امروز'"></span>
+          </button>
+          <button class="btn btn-secondary" @click="openCreateJournalEntry()">
+            <span x-html="icon('plus')"></span>
+            <span>ثبت برای تاریخ دیگر</span>
+          </button>
+        </div>
       </div>
 
-      <template x-if="chats.length === 0">
+      <template x-if="journalEntries.length === 0">
         <div class="card">
           <div class="empty-state" style="padding-block:var(--space-xxl);">
-            <div class="icon-wrap" x-html="icon('bot')"></div>
-            <strong>هنوز Chatای ثبت نشده</strong>
-            <p>گفتگوهای ارزشمندت با AI را اینجا آرشیو کن تا گم نشوند.</p>
+            <div class="icon-wrap" x-html="icon('notebook-pen')"></div>
+            <strong>هنوز ثبتی وجود نداره</strong>
+            <p>نیمه دوم ستاره قطبی: هر شب بدانی چه یاد گرفتی.</p>
             <div class="empty-actions">
-              <button class="btn btn-primary" @click="openCreateChat()"><span x-html="icon('bot')"></span><span>اولین گفتگو را ثبت کن</span></button>
+              <button class="btn btn-primary" @click="openTodayOrCreate()"><span x-html="icon('notebook-pen')"></span><span>امروز چی یاد گرفتی؟</span></button>
             </div>
           </div>
         </div>
       </template>
 
-      <div class="note-grid" x-show="chats.length > 0">
-        <template x-for="chat in sortedChats" :key="chat.id">
-          <div class="card note-card" @click="openEditChat(chat)">
-            <div class="note-card-top">
-              <h3 class="note-card-title" x-text="chat.title"></h3>
-              <div class="note-card-actions" @click.stop>
-                <button class="mini-icon-btn" @click="openEditChat(chat)" title="ویرایش" aria-label="ویرایش Chat">
-                  <span x-html="icon('pencil')"></span>
-                </button>
-                <button class="mini-icon-btn danger" @click="askDeleteChat(chat)" title="حذف" aria-label="حذف Chat">
-                  <span x-html="icon('trash-2')"></span>
-                </button>
+      <div class="journal-list" x-show="journalEntries.length > 0">
+        <template x-for="entry in sortedJournalEntries" :key="entry.id">
+          <div class="card journal-entry-card" @click="openEditJournalEntry(entry)">
+            <div class="journal-date-block">
+              <span class="weekday" x-text="jalaliWeekday(entry.date)"></span>
+              <span class="day en" x-text="jalaliPartsOf(entry.date).jd"></span>
+              <span class="month" x-text="jalaliMonthNames[jalaliPartsOf(entry.date).jm - 1]"></span>
+              <span class="mood-ring" :style="'border-color:' + moodColorVar(entry.mood)">
+                <span x-text="moodMeta(entry.mood).emoji"></span>
+              </span>
+            </div>
+
+            <div class="journal-entry-body">
+              <div class="journal-entry-top">
+                <h3 class="journal-entry-title" x-text="entry.title"></h3>
+                <div class="note-card-actions" @click.stop>
+                  <button class="mini-icon-btn" @click="openEditJournalEntry(entry)" title="ویرایش" aria-label="ویرایش ژورنال">
+                    <span x-html="icon('pencil')"></span>
+                  </button>
+                  <button class="mini-icon-btn danger" @click="askDeleteJournalEntry(entry)" title="حذف" aria-label="حذف ژورنال">
+                    <span x-html="icon('trash-2')"></span>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div class="note-card-badges">
-              <span class="badge badge-progress platform-badge" x-text="chat.platform"></span>
-              <span class="badge badge-muted" x-text="chatCategoryMeta(chat.category).label"></span>
-              <span class="badge" :class="projectStatusMeta(chat.status).badge">
-                <span x-text="projectStatusMeta(chat.status).label"></span>
-              </span>
-              <template x-for="tag in chat.tags" :key="tag">
-                <span class="badge badge-muted" x-text="tag"></span>
-              </template>
-            </div>
-
-            <p class="note-card-preview" x-show="chat.summary" x-text="chat.summary"></p>
-
-            <div class="note-card-footer">
-              <span class="version-pill en" x-text="chat.version"></span>
-              <span style="display:flex; align-items:center; gap:var(--space-s);">
-                <span class="project-chip" x-show="projectTitleById(chat.project_id)">
+              <div class="journal-stats-row">
+                <span class="stat mood-stat">
+                  <span class="mood-emoji" x-text="moodMeta(entry.mood).emoji"></span>
+                  <span x-text="moodMeta(entry.mood).label"></span>
+                </span>
+                <span class="stat" x-show="(entry.time_log_ids || []).length > 0">
+                  <span x-html="icon('timer')"></span>
+                  <span x-text="formatMinutes(journalEntryTotalMinutes(entry))"></span>
+                </span>
+                <span class="stat" x-show="projectTitleById(entry.project_id)">
                   <span x-html="icon('folder-kanban')"></span>
-                  <span x-text="projectTitleById(chat.project_id)"></span>
+                  <span x-text="projectTitleById(entry.project_id)"></span>
                 </span>
-                <span class="knowledge-count-chip" x-show="notesFromChatCount(chat.id) > 0">
-                  <span x-html="icon('library')"></span>
-                  <span class="en" x-text="notesFromChatCount(chat.id)"></span>
-                </span>
-              </span>
-            </div>
-          </div>
-        </template>
-      </div>
-    </div>
-  </section>
+              </div>
 
-  <!-- ---------- ANALYTICS ---------- -->
-  <section class="view" x-show="currentView === 'analytics'" x-cloak>
-    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
-      <div class="module-toolbar">
-        <div>
-          <h1>تحلیل‌ها</h1>
-          <p class="subtitle">نمای Read-only روی داده‌های Learning، Projects و Journal — سند 002.</p>
-        </div>
-      </div>
+              <div class="journal-entry-divider"></div>
 
-      <div class="kpi-grid">
-        <div class="card kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-title">پروژه‌های فعال</span>
-            <div class="kpi-icon"><span x-html="icon('folder-open')"></span></div>
-          </div>
-          <div class="kpi-value en" x-text="activeProjectsCount"></div>
-          <p class="kpi-desc">پروژه با وضعیت «فعال» طبق ماژول پروژه‌ها.</p>
-        </div>
+              <p class="journal-entry-preview" x-text="entry.learnings || entry.challenges_solutions || 'بدون یادداشت متنی'"></p>
 
-        <div class="card kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-title">پروژه‌های تکمیل‌شده</span>
-            <div class="kpi-icon"><span x-html="icon('check-circle-2')"></span></div>
-          </div>
-          <div class="kpi-value en" x-text="completedProjectsCount"></div>
-          <p class="kpi-desc">قابل مشاهده کامل در ماژول نمونه‌کار.</p>
-        </div>
-
-        <div class="card kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-title">استریک یادگیری</span>
-            <div class="kpi-icon"><span x-html="icon('flame')"></span></div>
-          </div>
-          <div class="kpi-value en" x-text="learningStreak + ' روز'"></div>
-          <p class="kpi-desc">روزهای متوالی با فعالیت (ژورنال، TimeLog یا تکمیل Task/Lesson/Practice).</p>
-        </div>
-
-        <div class="card kpi-card">
-          <div class="kpi-top">
-            <span class="kpi-title">ساعات ثبت‌شده</span>
-            <div class="kpi-icon"><span x-html="icon('clock')"></span></div>
-          </div>
-          <div class="kpi-value en" x-text="totalLoggedHours + ' ساعت'"></div>
-          <p class="kpi-desc">مجموع کل TimeLogهای ثبت‌شده روی Taskها.</p>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="section-title-row" style="margin-bottom:var(--space-m);">
-          <h2>پیشرفت کلی مسیر یادگیری</h2>
-          <span class="badge badge-progress">
-            <span x-html="icon('trending-up')"></span>
-            <span class="en" x-text="overallLearningProgress + '٪'"></span>
-          </span>
-        </div>
-        <div class="progress-track"><div class="progress-fill" :style="'width:' + overallLearningProgress + '%'"></div></div>
-        <p style="margin-top:var(--space-s); font-size:var(--text-caption); color:var(--color-text-secondary);">
-          بر اساس نسبت Lessonها و Practiceهای «تکمیل‌شده» (با وزن مساوی) در همهٔ Roadmapها — همان فرمول ماژول یادگیری.
-        </p>
-      </div>
-
-      <div class="card">
-        <div class="section-title-row" style="margin-bottom:var(--space-m);">
-          <h2>فعالیت ۱۴ روز اخیر</h2>
-          <span class="badge badge-muted">
-            <span x-html="icon('flame')"></span>
-            <span>استریک: <span class="en" x-text="learningStreak"></span> روز</span>
-          </span>
-        </div>
-        <div class="activity-strip">
-          <template x-for="day in last14DaysActivity" :key="day.date">
-            <div class="activity-dot" :class="{active: day.active}" :title="day.weekday + ' — ' + jalaliFullLabel(day.date) + (day.active ? ' (فعال)' : ' (بدون فعالیت)')"></div>
-          </template>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------- PORTFOLIO ---------- -->
-  <section class="view" x-show="currentView === 'portfolio'" x-cloak>
-    <div style="display:flex; flex-direction:column; gap:var(--space-xl);">
-      <div class="module-toolbar">
-        <div>
-          <h1>نمونه‌کار</h1>
-          <p class="subtitle">نمای Read-only از پروژه‌های تکمیل‌شده — سند 002. فعال از ابتدای فاز Version 1 طبق سند 011.</p>
-        </div>
-      </div>
-
-      <template x-if="completedProjects.length === 0">
-        <div class="card">
-          <div class="empty-state" style="padding-block:var(--space-xxl);">
-            <div class="icon-wrap" x-html="icon('briefcase')"></div>
-            <strong>هنوز پروژهٔ تکمیل‌شده‌ای وجود ندارد</strong>
-            <p>وقتی وضعیت یک پروژه از ماژول «پروژه‌ها» به «تکمیل‌شده» تغییر کند، اینجا نمایش داده می‌شود.</p>
-            <div class="empty-actions">
-              <button class="btn btn-secondary" @click="goTo(moduleById('projects'))"><span x-html="icon('folder-kanban')"></span><span>برو سراغ پروژه‌ها</span></button>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <div class="note-grid" x-show="completedProjects.length > 0">
-        <template x-for="project in completedProjects" :key="project.id">
-          <div class="card project-card" @click="openPortfolioDetail(project)">
-            <div class="project-card-top">
-              <h3 class="project-card-title" x-text="project.title"></h3>
-            </div>
-
-            <p class="project-card-desc" x-text="project.description || 'بدون توضیح'"></p>
-
-            <div class="project-card-badges">
-              <span class="badge badge-success">
-                <span x-html="icon('check-circle-2')"></span>
-                <span>تکمیل‌شده</span>
-              </span>
-              <template x-for="tag in project.tags" :key="tag">
-                <span class="badge badge-muted" x-text="tag"></span>
-              </template>
-            </div>
-
-            <div class="note-card-footer">
-              <span class="version-pill en" x-text="project.version"></span>
-              <span style="display:flex; align-items:center; gap:var(--space-m);">
-                <span class="knowledge-count-chip" x-show="notesForProject(project.id).length > 0">
-                  <span x-html="icon('library')"></span>
-                  <span class="en" x-text="notesForProject(project.id).length"></span>
-                </span>
-                <span class="knowledge-count-chip" x-show="portfolioProjectHours(project.id) > 0">
-                  <span x-html="icon('clock')"></span>
-                  <span class="en" x-text="portfolioProjectHours(project.id) + ' س'"></span>
-                </span>
-              </span>
+              <div class="note-card-badges" x-show="(entry.tags || []).length > 0">
+                <template x-for="tag in entry.tags" :key="tag">
+                  <span class="badge badge-muted" x-text="tag"></span>
+                </template>
+              </div>
             </div>
           </div>
         </template>
@@ -4367,384 +3817,308 @@
 </div>
 
 <!-- =====================================================================
-     PROMPT MODAL — Create / Edit (ماژول Prompt Hub)
-     منبع فیلدها: 005-Data-Architecture (Base Entity + Versioning) · 008 (چند Chat)
+     ROADMAP MODAL — Create / Edit (ماژول Learning)
+     منبع فیلدها: 005 (Base Entity — هیچ فیلد اختصاصی برای Roadmap تعریف نشده)
      ===================================================================== -->
-<div class="modal-overlay" x-show="promptModalOpen" x-cloak x-transition @keydown.escape.window="promptModalOpen = false">
-  <div class="modal" @click.outside="promptModalOpen = false" role="dialog" aria-modal="true">
+<div class="modal-overlay" x-show="roadmapModalOpen" x-cloak x-transition @keydown.escape.window="roadmapModalOpen = false">
+  <div class="modal" @click.outside="roadmapModalOpen = false" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div>
-        <h2 x-text="promptModalMode === 'create' ? 'Prompt جدید' : 'ویرایش Prompt'"></h2>
-        <p>طبق ساختار پایه Entity و Versioning در سند 005-Data-Architecture.</p>
+        <h2 x-text="roadmapModalMode === 'create' ? 'Roadmap جدید' : 'ویرایش Roadmap'"></h2>
+        <p>طبق ساختار پایه Entity در سند 005-Data-Architecture.</p>
       </div>
-      <button class="icon-btn" @click="promptModalOpen = false" aria-label="بستن">
+      <button class="icon-btn" @click="roadmapModalOpen = false" aria-label="بستن">
         <span x-html="icon('x')"></span>
       </button>
     </div>
-
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label" for="prf-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="prf-title" class="form-input" :class="{invalid: promptFormError}" type="text" x-model="promptForm.title" placeholder="مثلاً: خلاصه‌سازی جلسه">
+        <label class="form-label" for="rm-title">عنوان <span class="optional">(الزامی)</span></label>
+        <input id="rm-title" class="form-input" :class="{invalid: roadmapFormError}" type="text" x-model="roadmapForm.title" placeholder="مثلاً: مسیر یادگیری هوش مصنوعی">
       </div>
-
       <div class="form-group">
-        <label class="form-label" for="prf-desc">توضیح کوتاه <span class="optional">(اختیاری)</span></label>
-        <input id="prf-desc" class="form-input" type="text" x-model="promptForm.description" placeholder="این Prompt برای چه کاری استفاده می‌شود؟">
+        <label class="form-label" for="rm-desc">توضیحات <span class="optional">(اختیاری)</span></label>
+        <textarea id="rm-desc" class="form-textarea" x-model="roadmapForm.description"></textarea>
       </div>
-
-      <div class="form-group">
-        <label class="form-label" for="prf-content">متن Prompt <span class="optional">(اختیاری)</span></label>
-        <textarea id="prf-content" class="form-textarea prompt-textarea" x-model="promptForm.content" placeholder="متن کامل Prompt…"></textarea>
-      </div>
-
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label" for="prf-status">وضعیت</label>
-          <select id="prf-status" class="form-select" x-model="promptForm.status">
+          <label class="form-label" for="rm-status">وضعیت</label>
+          <select id="rm-status" class="form-select" x-model="roadmapForm.status">
             <template x-for="opt in projectStatusOptions" :key="opt.value">
               <option :value="opt.value" x-text="opt.label"></option>
             </template>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-          <div class="tag-field">
-            <template x-for="tag in promptForm.tags" :key="tag">
-              <span class="tag-chip">
-                <span x-text="tag"></span>
-                <button type="button" @click="removePromptTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button>
-              </span>
-            </template>
-            <input type="text" x-model="promptTagInput" placeholder="برچسب…" @keydown.enter.prevent="addPromptTag()">
-          </div>
+          <label class="form-label" for="rm-version">نسخه</label>
+          <input id="rm-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="roadmapForm.version" placeholder="v1">
         </div>
       </div>
-
-      <div class="form-group" x-show="projects.length > 0">
-        <label class="form-label">پروژه‌های مرتبط <span class="optional">(اختیاری، چندتایی)</span></label>
-        <div class="dependency-list">
-          <template x-for="project in projects" :key="project.id">
-            <div class="dependency-item">
-              <input type="checkbox" :id="'pref-' + project.id" :checked="promptForm.project_ids.includes(project.id)" @change="toggleProjectRef(project.id)">
-              <label :for="'pref-' + project.id" x-text="project.title"></label>
-            </div>
-          </template>
-        </div>
-        <span class="form-helper">یک Prompt می‌تواند هم‌زمان به چند پروژه وصل باشد.</span>
-      </div>
-      <p class="form-helper" x-show="projects.length === 0">هنوز پروژه‌ای نساخته‌ای؛ بعداً از همین فرم می‌تونی این Prompt رو به پروژه‌ها وصل کنی.</p>
-
       <div class="form-group">
-        <label class="form-label">نسخه</label>
-        <div style="display:flex; align-items:center; gap:var(--space-s); flex-wrap:wrap;">
-          <span class="version-pill en" x-text="promptForm.version"></span>
-          <button type="button" class="btn btn-secondary" x-show="promptModalMode === 'edit'" @click="bumpPromptMajorVersion()">
-            <span x-html="icon('trending-up')"></span>
-            <span>نسخهٔ بزرگ جدید</span>
-          </button>
-        </div>
-        <span class="form-helper" x-show="promptModalMode === 'edit'">با تغییر متن Prompt و «ذخیره»، نسخه خودکار Minor بالا می‌رود (v1 → v1.1)؛ برای پرش به نسخهٔ بزرگ از دکمهٔ بالا استفاده کن.</span>
-        <span class="form-helper" x-show="promptModalMode === 'create'">Promptهای جدید با نسخهٔ v1 شروع می‌شوند.</span>
-      </div>
-
-      <div class="form-group" x-show="promptVersionWillChange">
-        <label class="form-label" for="prf-version-note">توضیح این تغییر نسخه <span class="optional">(الزامی)</span></label>
-        <input id="prf-version-note" class="form-input" type="text" x-model="promptVersionChangeNote" placeholder="مثلاً: اضافه‌کردن محدودیت طول خروجی">
-        <span class="form-helper">این توضیح در تاریخچهٔ نسخه‌های این Prompt ثبت می‌شود.</span>
-      </div>
-
-      <div class="form-group" x-show="promptModalMode === 'edit' && (promptForm.version_history || []).length > 0">
-        <label class="form-label">تاریخچهٔ ارتقای نسخه</label>
-        <div class="version-history-list">
-          <template x-for="entry in [...(promptForm.version_history || [])].slice().reverse()" :key="entry.version + '-' + entry.changed_at">
-            <div class="version-history-item">
-              <div class="version-history-top">
-                <span class="version-pill en" x-text="entry.version"></span>
-                <span class="version-history-date en" x-text="formatDueDate(entry.changed_at)"></span>
-              </div>
-              <p class="version-history-desc" x-text="entry.description"></p>
-              <button type="button" class="btn btn-secondary" x-show="entry.version !== promptForm.version" @click="rollbackPromptToVersion(entry)">
-                <span x-html="icon('refresh-cw')"></span>
-                <span>بازگردانی به این نسخه</span>
-              </button>
-            </div>
+        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
+        <div class="tag-field">
+          <template x-for="tag in roadmapForm.tags" :key="tag">
+            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeRoadmapTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
           </template>
+          <input type="text" x-model="roadmapTagInput" placeholder="برچسب…" @keydown.enter.prevent="addRoadmapTag()">
         </div>
-        <span class="form-helper">بازگردانی فقط داخل همین فرم اعمال می‌شود؛ برای نهایی‌شدن باید «ذخیره تغییرات» را بزنی.</span>
       </div>
-
-      <p class="form-error" x-show="promptFormError" x-text="promptFormError"></p>
+      <p class="form-error" x-show="roadmapFormError" x-text="roadmapFormError"></p>
     </div>
-
     <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="promptModalMode === 'edit'" @click="promptModalOpen = false; askDeletePrompt({ id: editingPromptId, title: promptForm.title });">
-        <span x-html="icon('trash-2')"></span>
-        <span>حذف</span>
+      <button class="btn btn-secondary footer-start" x-show="roadmapModalMode === 'edit'" @click="roadmapModalOpen = false; askDeleteRoadmap({ id: editingRoadmapId, title: roadmapForm.title });">
+        <span x-html="icon('trash-2')"></span><span>حذف</span>
       </button>
-      <button class="btn btn-secondary" @click="promptModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="savePrompt()">
-        <span x-text="promptModalMode === 'create' ? 'ایجاد Prompt' : 'ذخیره تغییرات'"></span>
+      <button class="btn btn-secondary" @click="roadmapModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="saveRoadmap()">
+        <span x-text="roadmapModalMode === 'create' ? 'ایجاد Roadmap' : 'ذخیره تغییرات'"></span>
       </button>
     </div>
   </div>
 </div>
 
 <!-- =====================================================================
-     RESOURCE MODAL — Create / Edit (ماژول Resources)
-     منبع فیلدها: 005-Data-Architecture (Base Entity) + 002 (انواع Resource)
-     نوع/URL/Author طبق تصمیم این چت اضافه شدند (Gap مستندات).
+     MODULE MODAL — Create / Edit (ماژول Learning)
      ===================================================================== -->
-<div class="modal-overlay" x-show="resourceModalOpen" x-cloak x-transition @keydown.escape.window="resourceModalOpen = false">
-  <div class="modal" @click.outside="resourceModalOpen = false" role="dialog" aria-modal="true">
+<div class="modal-overlay" x-show="moduleModalOpen" x-cloak x-transition @keydown.escape.window="moduleModalOpen = false">
+  <div class="modal" @click.outside="moduleModalOpen = false" role="dialog" aria-modal="true">
     <div class="modal-header">
       <div>
-        <h2 x-text="resourceModalMode === 'create' ? 'Resource جدید' : 'ویرایش Resource'"></h2>
-        <p>طبق ساختار پایه Entity در سند 005 و انواع Resource در سند 002.</p>
+        <h2 x-text="moduleModalMode === 'create' ? 'Module جدید' : 'ویرایش Module'"></h2>
+        <p>طبق ساختار پایه Entity در سند 005-Data-Architecture.</p>
       </div>
-      <button class="icon-btn" @click="resourceModalOpen = false" aria-label="بستن">
+      <button class="icon-btn" @click="moduleModalOpen = false" aria-label="بستن">
         <span x-html="icon('x')"></span>
       </button>
     </div>
-
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label" for="rf-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="rf-title" class="form-input" :class="{invalid: resourceFormError}" type="text" x-model="resourceForm.title" placeholder="مثلاً: کتاب Designing Data-Intensive Applications">
+        <label class="form-label" for="md-title">عنوان <span class="optional">(الزامی)</span></label>
+        <input id="md-title" class="form-input" :class="{invalid: moduleFormError}" type="text" x-model="moduleForm.title" placeholder="مثلاً: مبانی یادگیری ماشین">
       </div>
-
+      <div class="form-group">
+        <label class="form-label" for="md-desc">توضیحات <span class="optional">(اختیاری)</span></label>
+        <textarea id="md-desc" class="form-textarea" x-model="moduleForm.description"></textarea>
+      </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label" for="rf-type">نوع</label>
-          <select id="rf-type" class="form-select" x-model="resourceForm.type">
-            <template x-for="opt in resourceTypeOptions" :key="opt.value">
+          <label class="form-label" for="md-status">وضعیت</label>
+          <select id="md-status" class="form-select" x-model="moduleForm.status">
+            <template x-for="opt in projectStatusOptions" :key="opt.value">
               <option :value="opt.value" x-text="opt.label"></option>
             </template>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="rf-status">وضعیت</label>
-          <select id="rf-status" class="form-select" x-model="resourceForm.status">
+          <label class="form-label" for="md-version">نسخه</label>
+          <input id="md-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="moduleForm.version" placeholder="v1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
+        <div class="tag-field">
+          <template x-for="tag in moduleForm.tags" :key="tag">
+            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeModuleTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
+          </template>
+          <input type="text" x-model="moduleTagInput" placeholder="برچسب…" @keydown.enter.prevent="addModuleTag()">
+        </div>
+      </div>
+      <p class="form-error" x-show="moduleFormError" x-text="moduleFormError"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary footer-start" x-show="moduleModalMode === 'edit'" @click="moduleModalOpen = false; askDeleteModule({ id: editingModuleId, title: moduleForm.title });">
+        <span x-html="icon('trash-2')"></span><span>حذف</span>
+      </button>
+      <button class="btn btn-secondary" @click="moduleModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="saveModule()">
+        <span x-text="moduleModalMode === 'create' ? 'ایجاد Module' : 'ذخیره تغییرات'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     LESSON MODAL — Create / Edit (ماژول Learning)
+     content/resource_ids طبق تصمیم این چت اضافه شدند (Gap مستندات).
+     ===================================================================== -->
+<div class="modal-overlay" x-show="lessonModalOpen" x-cloak x-transition @keydown.escape.window="lessonModalOpen = false">
+  <div class="modal" @click.outside="lessonModalOpen = false" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2 x-text="lessonModalMode === 'create' ? 'Lesson جدید' : 'ویرایش Lesson'"></h2>
+        <p>محتوا و منابع طبق تصمیم چت ماژول Learning.</p>
+      </div>
+      <button class="icon-btn" @click="lessonModalOpen = false" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="ls-title">عنوان <span class="optional">(الزامی)</span></label>
+        <input id="ls-title" class="form-input" :class="{invalid: lessonFormError}" type="text" x-model="lessonForm.title" placeholder="مثلاً: رگرسیون خطی">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ls-desc">توضیح کوتاه <span class="optional">(اختیاری)</span></label>
+        <input id="ls-desc" class="form-input" type="text" x-model="lessonForm.description">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ls-content">محتوا <span class="optional">(اختیاری)</span></label>
+        <textarea id="ls-content" class="form-textarea" style="min-height:120px;" x-model="lessonForm.content" placeholder="متن آموزشی این Lesson…"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="ls-status">وضعیت</label>
+          <select id="ls-status" class="form-select" x-model="lessonForm.status">
+            <template x-for="opt in projectStatusOptions" :key="opt.value">
+              <option :value="opt.value" x-text="opt.label"></option>
+            </template>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="ls-version">نسخه</label>
+          <input id="ls-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="lessonForm.version" placeholder="v1">
+        </div>
+      </div>
+      <div class="form-group" x-show="resources.length > 0">
+        <label class="form-label">منابع مرتبط <span class="optional">(اختیاری، چندتایی — از ماژول Resources)</span></label>
+        <div class="dependency-list">
+          <template x-for="resource in resources" :key="resource.id">
+            <div class="dependency-item">
+              <input type="checkbox" :id="'lres-' + resource.id" :checked="lessonForm.resource_ids.includes(resource.id)" @change="toggleLessonResource(resource.id)">
+              <label :for="'lres-' + resource.id" x-text="resource.title"></label>
+            </div>
+          </template>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
+        <div class="tag-field">
+          <template x-for="tag in lessonForm.tags" :key="tag">
+            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeLessonTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
+          </template>
+          <input type="text" x-model="lessonTagInput" placeholder="برچسب…" @keydown.enter.prevent="addLessonTag()">
+        </div>
+      </div>
+      <p class="form-error" x-show="lessonFormError" x-text="lessonFormError"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary footer-start" x-show="lessonModalMode === 'edit'" @click="lessonModalOpen = false; askDeleteLesson({ id: editingLessonId, title: lessonForm.title });">
+        <span x-html="icon('trash-2')"></span><span>حذف</span>
+      </button>
+      <button class="btn btn-secondary" @click="lessonModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="saveLesson()">
+        <span x-text="lessonModalMode === 'create' ? 'ایجاد Lesson' : 'ذخیره تغییرات'"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================================
+     PRACTICE MODAL — Create / Edit (ماژول Learning)
+     practice_type/outcome/project_id طبق تصمیم این چت اضافه شدند.
+     ===================================================================== -->
+<div class="modal-overlay" x-show="practiceModalOpen" x-cloak x-transition @keydown.escape.window="practiceModalOpen = false">
+  <div class="modal" @click.outside="practiceModalOpen = false" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <div>
+        <h2 x-text="practiceModalMode === 'create' ? 'Practice جدید' : 'ویرایش Practice'"></h2>
+        <p>محتوا هم‌الگو با Lesson؛ به‌علاوهٔ نوع تمرین، خروجی، و Reference اختیاری به Project.</p>
+      </div>
+      <button class="icon-btn" @click="practiceModalOpen = false" aria-label="بستن">
+        <span x-html="icon('x')"></span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="pc-title">عنوان <span class="optional">(الزامی)</span></label>
+        <input id="pc-title" class="form-input" :class="{invalid: practiceFormError}" type="text" x-model="practiceForm.title" placeholder="مثلاً: پیاده‌سازی رگرسیون خطی از صفر">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="pc-type">نوع تمرین</label>
+          <select id="pc-type" class="form-select" x-model="practiceForm.practice_type">
+            <template x-for="opt in practiceTypeOptions" :key="opt.value">
+              <option :value="opt.value" x-text="opt.label"></option>
+            </template>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="pc-status">وضعیت</label>
+          <select id="pc-status" class="form-select" x-model="practiceForm.status">
             <template x-for="opt in projectStatusOptions" :key="opt.value">
               <option :value="opt.value" x-text="opt.label"></option>
             </template>
           </select>
         </div>
       </div>
-
       <div class="form-group">
-        <label class="form-label" for="rf-desc">توضیحات <span class="optional">(اختیاری)</span></label>
-        <textarea id="rf-desc" class="form-textarea" x-model="resourceForm.description" placeholder="این منبع دربارهٔ چیه و چرا نگهش داشتی؟"></textarea>
+        <label class="form-label" for="pc-content">محتوا / دستورالعمل تمرین <span class="optional">(اختیاری)</span></label>
+        <textarea id="pc-content" class="form-textarea" x-model="practiceForm.content" placeholder="این تمرین از کاربر چه می‌خواهد؟"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="pc-outcome">خروجی / نتیجه <span class="optional">(اختیاری)</span></label>
+        <textarea id="pc-outcome" class="form-textarea" x-model="practiceForm.outcome" placeholder="کاربر واقعاً چه کاری انجام داد؟"></textarea>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="rf-author">نویسنده/سازنده <span class="optional">(اختیاری)</span></label>
-          <input id="rf-author" class="form-input" type="text" x-model="resourceForm.author" placeholder="مثلاً: Martin Kleppmann">
+      <div class="form-group">
+        <label class="form-label">Mini Project <span class="optional">(اختیاری)</span></label>
+        <div class="filter-bar" style="margin-bottom:var(--space-s);">
+          <button type="button" class="filter-chip" :class="{active: practiceProjectMode === 'existing'}" @click="practiceProjectMode = 'existing'">پروژهٔ موجود</button>
+          <button type="button" class="filter-chip" :class="{active: practiceProjectMode === 'new'}" @click="practiceProjectMode = 'new'">پروژهٔ جدید</button>
         </div>
-        <div class="form-group">
-          <label class="form-label" for="rf-url">لینک/URL <span class="optional">(اختیاری)</span></label>
-          <input id="rf-url" class="form-input en" style="direction:ltr; text-align:left;" type="url" x-model="resourceForm.url" placeholder="https://…">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">فایل <span class="optional">(اختیاری — جدا از لینک/URL بالا)</span></label>
-        <template x-if="!resourceForm.storage_path">
-          <div>
-            <input type="file" id="rf-file-input" style="display:none" @change="uploadResourceFile($event)">
-            <button type="button" class="btn btn-secondary" :disabled="resourceUploading" @click="document.getElementById('rf-file-input').click()">
-              <span :class="{spin: resourceUploading}" x-html="icon(resourceUploading ? 'loader' : 'upload')"></span>
-              <span x-text="resourceUploading ? 'در حال آپلود…' : 'انتخاب و آپلود فایل'"></span>
-            </button>
-            <p class="form-helper">جزوه، پاور، نمونه سوال، ویدیو، ویس یا هر فایل دیگر — بدون محدودیت نوع (حجم هر فایل معمولاً تا ۵۰ مگابایت).</p>
-          </div>
-        </template>
-        <template x-if="resourceForm.storage_path">
-          <div class="tag-field" style="justify-content:space-between;">
-            <span style="display:flex; align-items:center; gap:6px;">
-              <span x-html="icon('paperclip')"></span>
-              <span x-text="resourceFileName(resourceForm.storage_path)"></span>
-            </span>
-            <button type="button" class="mini-icon-btn danger" @click="removeUploadedResourceFile()" title="حذف فایل" aria-label="حذف فایل انتخاب‌شده">
-              <span x-html="icon('x')"></span>
-            </button>
-          </div>
-        </template>
-        <p class="form-error" x-show="resourceUploadError" x-text="resourceUploadError"></p>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="rf-project">پروژهٔ مرتبط <span class="optional">(اختیاری)</span></label>
-        <select id="rf-project" class="form-select" x-model="resourceForm.project_id">
-          <option :value="null">بدون پروژه</option>
-          <template x-for="project in projects" :key="project.id">
-            <option :value="project.id" x-text="project.title"></option>
-          </template>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-        <div class="tag-field">
-          <template x-for="tag in resourceForm.tags" :key="tag">
-            <span class="tag-chip">
-              <span x-text="tag"></span>
-              <button type="button" @click="removeResourceTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button>
-            </span>
-          </template>
-          <input type="text" x-model="resourceTagInput" placeholder="برچسب…" @keydown.enter.prevent="addResourceTag()">
-        </div>
-        <span class="form-helper">برای افزودن برچسب، Enter بزن.</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="rf-version">نسخه</label>
-        <input id="rf-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="resourceForm.version" placeholder="v1">
-        <span class="form-helper">Resource جزو Entityهای نسخه‌بندی‌شونده در سند 005 نیست؛ این فقط یک برچسب آزاد است (مثل Project)، بدون تاریخچه یا بالارفتن خودکار.</span>
-      </div>
-
-      <p class="form-error" x-show="resourceFormError" x-text="resourceFormError"></p>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="resourceModalMode === 'edit'" @click="resourceModalOpen = false; askDeleteResource({ id: editingResourceId, title: resourceForm.title });">
-        <span x-html="icon('trash-2')"></span>
-        <span>حذف</span>
-      </button>
-      <button class="btn btn-secondary" @click="resourceModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveResource()">
-        <span x-text="resourceModalMode === 'create' ? 'ایجاد Resource' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== مودال باکس (کتابخانهٔ منابع) ===== -->
-<div class="modal-overlay" x-show="boxModalOpen" x-cloak x-transition @keydown.escape.window="boxModalOpen = false">
-  <div class="modal modal-sm" @click.outside="boxModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="boxModalMode === 'create' ? 'باکس جدید' : 'ویرایش باکس'"></h2>
-        <p>یک دسته‌بندی موضوعی برای منابعت — مثلاً یک درس، المپیاد، یا هر موضوع دیگر.</p>
-      </div>
-      <button class="icon-btn" @click="boxModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="bf-title">عنوان</label>
-        <input id="bf-title" class="form-input" :class="{invalid: boxFormError}" type="text" x-model="boxForm.title" placeholder="مثلاً: فیزیولوژی">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="bf-desc">توضیح <span class="optional">(اختیاری)</span></label>
-        <textarea id="bf-desc" class="form-textarea" x-model="boxForm.description"></textarea>
-      </div>
-      <p class="form-error" x-show="boxFormError" x-text="boxFormError"></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" @click="boxModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveBox()">
-        <span x-text="boxModalMode === 'create' ? 'ایجاد باکس' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== مودال Resource ساده‌شده — داخل یک باکس (فقط عنوان/نوع/نویسنده/برچسب/فایل‌یا‌لینک/توضیح) ===== -->
-<div class="modal-overlay" x-show="boxResourceModalOpen" x-cloak x-transition @keydown.escape.window="boxResourceModalOpen = false">
-  <div class="modal" @click.outside="boxResourceModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="boxResourceModalMode === 'create' ? 'منبع جدید' : 'ویرایش منبع'"></h2>
-        <p x-text="'داخل باکس: ' + (activeBox ? activeBox.title : '')"></p>
-      </div>
-      <button class="icon-btn" @click="boxResourceModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="bxr-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="bxr-title" class="form-input" :class="{invalid: boxResourceFormError}" type="text" x-model="boxResourceForm.title">
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="bxr-type">نوع</label>
-          <select id="bxr-type" class="form-select" x-model="boxResourceForm.type">
-            <template x-for="opt in resourceTypeOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
+        <template x-if="practiceProjectMode === 'existing'">
+          <select class="form-select" x-model="practiceForm.project_id">
+            <option :value="null">بدون پروژه</option>
+            <template x-for="project in projects" :key="project.id">
+              <option :value="project.id" x-text="project.title"></option>
             </template>
           </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="bxr-author">نویسنده/سازنده <span class="optional">(اختیاری)</span></label>
-          <input id="bxr-author" class="form-input" type="text" x-model="boxResourceForm.author">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="bxr-url">لینک/URL <span class="optional">(اختیاری — جدا از فایل زیر)</span></label>
-        <input id="bxr-url" class="form-input en" style="direction:ltr; text-align:left;" type="url" x-model="boxResourceForm.url" placeholder="https://…">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">فایل <span class="optional">(اختیاری)</span></label>
-        <template x-if="!boxResourceForm.storage_path">
-          <div>
-            <input type="file" id="bxr-file-input" style="display:none" @change="uploadBoxResourceFile($event)">
-            <button type="button" class="btn btn-secondary" :disabled="boxResourceUploading" @click="document.getElementById('bxr-file-input').click()">
-              <span :class="{spin: boxResourceUploading}" x-html="icon(boxResourceUploading ? 'loader' : 'upload')"></span>
-              <span x-text="boxResourceUploading ? 'در حال آپلود…' : 'انتخاب و آپلود فایل'"></span>
-            </button>
+        </template>
+        <template x-if="practiceProjectMode === 'new'">
+          <div style="display:flex; gap:var(--space-s);">
+            <input type="text" class="form-input" x-model="newProjectTitleForPractice" placeholder="عنوان پروژهٔ جدید…">
+            <button type="button" class="btn btn-secondary" @click="createProjectInlineForPractice()">بساز و انتخاب کن</button>
           </div>
         </template>
-        <template x-if="boxResourceForm.storage_path">
-          <div class="tag-field" style="justify-content:space-between;">
-            <span style="display:flex; align-items:center; gap:6px;">
-              <span x-html="icon('paperclip')"></span>
-              <span x-text="resourceFileName(boxResourceForm.storage_path)"></span>
-            </span>
-            <button type="button" class="mini-icon-btn danger" @click="removeUploadedBoxResourceFile()" title="حذف فایل" aria-label="حذف فایل انتخاب‌شده">
-              <span x-html="icon('x')"></span>
-            </button>
-          </div>
-        </template>
-        <p class="form-error" x-show="boxResourceUploadError" x-text="boxResourceUploadError"></p>
+        <span class="form-helper">با تبدیل این Practice به Mini Project، به یک Project واقعی از ماژول Projects وصل می‌شود.</span>
+      </div>
+
+      <div class="form-group" x-show="resources.length > 0">
+        <label class="form-label">منابع مرتبط <span class="optional">(اختیاری، چندتایی)</span></label>
+        <div class="dependency-list">
+          <template x-for="resource in resources" :key="resource.id">
+            <div class="dependency-item">
+              <input type="checkbox" :id="'pres-' + resource.id" :checked="practiceForm.resource_ids.includes(resource.id)" @change="toggleLessonResourceForPractice(resource.id)">
+              <label :for="'pres-' + resource.id" x-text="resource.title"></label>
+            </div>
+          </template>
+        </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label" for="bxr-desc">توضیحات <span class="optional">(اختیاری)</span></label>
-        <textarea id="bxr-desc" class="form-textarea" x-model="boxResourceForm.description"></textarea>
+        <label class="form-label" for="pc-version">نسخه</label>
+        <input id="pc-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="practiceForm.version" placeholder="v1">
       </div>
 
       <div class="form-group">
         <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
         <div class="tag-field">
-          <template x-for="tag in boxResourceForm.tags" :key="tag">
-            <span class="tag-chip">
-              <span x-text="tag"></span>
-              <button type="button" @click="removeBoxResourceTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button>
-            </span>
+          <template x-for="tag in practiceForm.tags" :key="tag">
+            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removePracticeTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
           </template>
-          <input type="text" x-model="boxResourceTagInput" placeholder="برچسب…" @keydown.enter.prevent="addBoxResourceTag()">
+          <input type="text" x-model="practiceTagInput" placeholder="برچسب…" @keydown.enter.prevent="addPracticeTag()">
         </div>
       </div>
 
-      <p class="form-error" x-show="boxResourceFormError" x-text="boxResourceFormError"></p>
+      <p class="form-error" x-show="practiceFormError" x-text="practiceFormError"></p>
     </div>
-
     <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="boxResourceModalMode === 'edit'" @click="boxResourceModalOpen = false; askDeleteBoxResource({ id: editingBoxResourceId, title: boxResourceForm.title });">
-        <span x-html="icon('trash-2')"></span>
-        <span>حذف</span>
+      <button class="btn btn-secondary footer-start" x-show="practiceModalMode === 'edit'" @click="practiceModalOpen = false; askDeletePractice({ id: editingPracticeId, title: practiceForm.title });">
+        <span x-html="icon('trash-2')"></span><span>حذف</span>
       </button>
-      <button class="btn btn-secondary" @click="boxResourceModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveBoxResource()">
-        <span x-text="boxResourceModalMode === 'create' ? 'ایجاد منبع' : 'ذخیره تغییرات'"></span>
+      <button class="btn btn-secondary" @click="practiceModalOpen = false">انصراف</button>
+      <button class="btn btn-primary" @click="savePractice()">
+        <span x-text="practiceModalMode === 'create' ? 'ایجاد Practice' : 'ذخیره تغییرات'"></span>
       </button>
     </div>
   </div>
@@ -5131,524 +4505,6 @@
       </button>
     </div>
   </div>
-</div>
-
-<!-- =====================================================================
-     ROADMAP MODAL — Create / Edit (ماژول Learning)
-     منبع فیلدها: 005 (Base Entity — هیچ فیلد اختصاصی برای Roadmap تعریف نشده)
-     ===================================================================== -->
-<div class="modal-overlay" x-show="roadmapModalOpen" x-cloak x-transition @keydown.escape.window="roadmapModalOpen = false">
-  <div class="modal" @click.outside="roadmapModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="roadmapModalMode === 'create' ? 'Roadmap جدید' : 'ویرایش Roadmap'"></h2>
-        <p>طبق ساختار پایه Entity در سند 005-Data-Architecture.</p>
-      </div>
-      <button class="icon-btn" @click="roadmapModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="rm-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="rm-title" class="form-input" :class="{invalid: roadmapFormError}" type="text" x-model="roadmapForm.title" placeholder="مثلاً: مسیر یادگیری هوش مصنوعی">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="rm-desc">توضیحات <span class="optional">(اختیاری)</span></label>
-        <textarea id="rm-desc" class="form-textarea" x-model="roadmapForm.description"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="rm-status">وضعیت</label>
-          <select id="rm-status" class="form-select" x-model="roadmapForm.status">
-            <template x-for="opt in projectStatusOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="rm-version">نسخه</label>
-          <input id="rm-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="roadmapForm.version" placeholder="v1">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-        <div class="tag-field">
-          <template x-for="tag in roadmapForm.tags" :key="tag">
-            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeRoadmapTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
-          </template>
-          <input type="text" x-model="roadmapTagInput" placeholder="برچسب…" @keydown.enter.prevent="addRoadmapTag()">
-        </div>
-      </div>
-      <p class="form-error" x-show="roadmapFormError" x-text="roadmapFormError"></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="roadmapModalMode === 'edit'" @click="roadmapModalOpen = false; askDeleteRoadmap({ id: editingRoadmapId, title: roadmapForm.title });">
-        <span x-html="icon('trash-2')"></span><span>حذف</span>
-      </button>
-      <button class="btn btn-secondary" @click="roadmapModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveRoadmap()">
-        <span x-text="roadmapModalMode === 'create' ? 'ایجاد Roadmap' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================================
-     MODULE MODAL — Create / Edit (ماژول Learning)
-     ===================================================================== -->
-<div class="modal-overlay" x-show="moduleModalOpen" x-cloak x-transition @keydown.escape.window="moduleModalOpen = false">
-  <div class="modal" @click.outside="moduleModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="moduleModalMode === 'create' ? 'Module جدید' : 'ویرایش Module'"></h2>
-        <p>طبق ساختار پایه Entity در سند 005-Data-Architecture.</p>
-      </div>
-      <button class="icon-btn" @click="moduleModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="md-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="md-title" class="form-input" :class="{invalid: moduleFormError}" type="text" x-model="moduleForm.title" placeholder="مثلاً: مبانی یادگیری ماشین">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="md-desc">توضیحات <span class="optional">(اختیاری)</span></label>
-        <textarea id="md-desc" class="form-textarea" x-model="moduleForm.description"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="md-status">وضعیت</label>
-          <select id="md-status" class="form-select" x-model="moduleForm.status">
-            <template x-for="opt in projectStatusOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="md-version">نسخه</label>
-          <input id="md-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="moduleForm.version" placeholder="v1">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-        <div class="tag-field">
-          <template x-for="tag in moduleForm.tags" :key="tag">
-            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeModuleTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
-          </template>
-          <input type="text" x-model="moduleTagInput" placeholder="برچسب…" @keydown.enter.prevent="addModuleTag()">
-        </div>
-      </div>
-      <p class="form-error" x-show="moduleFormError" x-text="moduleFormError"></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="moduleModalMode === 'edit'" @click="moduleModalOpen = false; askDeleteModule({ id: editingModuleId, title: moduleForm.title });">
-        <span x-html="icon('trash-2')"></span><span>حذف</span>
-      </button>
-      <button class="btn btn-secondary" @click="moduleModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveModule()">
-        <span x-text="moduleModalMode === 'create' ? 'ایجاد Module' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================================
-     LESSON MODAL — Create / Edit (ماژول Learning)
-     content/resource_ids طبق تصمیم این چت اضافه شدند (Gap مستندات).
-     ===================================================================== -->
-<div class="modal-overlay" x-show="lessonModalOpen" x-cloak x-transition @keydown.escape.window="lessonModalOpen = false">
-  <div class="modal" @click.outside="lessonModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="lessonModalMode === 'create' ? 'Lesson جدید' : 'ویرایش Lesson'"></h2>
-        <p>محتوا و منابع طبق تصمیم چت ماژول Learning.</p>
-      </div>
-      <button class="icon-btn" @click="lessonModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="ls-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="ls-title" class="form-input" :class="{invalid: lessonFormError}" type="text" x-model="lessonForm.title" placeholder="مثلاً: رگرسیون خطی">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="ls-desc">توضیح کوتاه <span class="optional">(اختیاری)</span></label>
-        <input id="ls-desc" class="form-input" type="text" x-model="lessonForm.description">
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="ls-content">محتوا <span class="optional">(اختیاری)</span></label>
-        <textarea id="ls-content" class="form-textarea" style="min-height:120px;" x-model="lessonForm.content" placeholder="متن آموزشی این Lesson…"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="ls-status">وضعیت</label>
-          <select id="ls-status" class="form-select" x-model="lessonForm.status">
-            <template x-for="opt in projectStatusOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="ls-version">نسخه</label>
-          <input id="ls-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="lessonForm.version" placeholder="v1">
-        </div>
-      </div>
-      <div class="form-group" x-show="resources.length > 0">
-        <label class="form-label">منابع مرتبط <span class="optional">(اختیاری، چندتایی — از ماژول Resources)</span></label>
-        <div class="dependency-list">
-          <template x-for="resource in resources" :key="resource.id">
-            <div class="dependency-item">
-              <input type="checkbox" :id="'lres-' + resource.id" :checked="lessonForm.resource_ids.includes(resource.id)" @change="toggleLessonResource(resource.id)">
-              <label :for="'lres-' + resource.id" x-text="resource.title"></label>
-            </div>
-          </template>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-        <div class="tag-field">
-          <template x-for="tag in lessonForm.tags" :key="tag">
-            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeLessonTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
-          </template>
-          <input type="text" x-model="lessonTagInput" placeholder="برچسب…" @keydown.enter.prevent="addLessonTag()">
-        </div>
-      </div>
-      <p class="form-error" x-show="lessonFormError" x-text="lessonFormError"></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="lessonModalMode === 'edit'" @click="lessonModalOpen = false; askDeleteLesson({ id: editingLessonId, title: lessonForm.title });">
-        <span x-html="icon('trash-2')"></span><span>حذف</span>
-      </button>
-      <button class="btn btn-secondary" @click="lessonModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveLesson()">
-        <span x-text="lessonModalMode === 'create' ? 'ایجاد Lesson' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================================
-     PRACTICE MODAL — Create / Edit (ماژول Learning)
-     practice_type/outcome/project_id طبق تصمیم این چت اضافه شدند.
-     ===================================================================== -->
-<div class="modal-overlay" x-show="practiceModalOpen" x-cloak x-transition @keydown.escape.window="practiceModalOpen = false">
-  <div class="modal" @click.outside="practiceModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="practiceModalMode === 'create' ? 'Practice جدید' : 'ویرایش Practice'"></h2>
-        <p>محتوا هم‌الگو با Lesson؛ به‌علاوهٔ نوع تمرین، خروجی، و Reference اختیاری به Project.</p>
-      </div>
-      <button class="icon-btn" @click="practiceModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="pc-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="pc-title" class="form-input" :class="{invalid: practiceFormError}" type="text" x-model="practiceForm.title" placeholder="مثلاً: پیاده‌سازی رگرسیون خطی از صفر">
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="pc-type">نوع تمرین</label>
-          <select id="pc-type" class="form-select" x-model="practiceForm.practice_type">
-            <template x-for="opt in practiceTypeOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="pc-status">وضعیت</label>
-          <select id="pc-status" class="form-select" x-model="practiceForm.status">
-            <template x-for="opt in projectStatusOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="pc-content">محتوا / دستورالعمل تمرین <span class="optional">(اختیاری)</span></label>
-        <textarea id="pc-content" class="form-textarea" x-model="practiceForm.content" placeholder="این تمرین از کاربر چه می‌خواهد؟"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="pc-outcome">خروجی / نتیجه <span class="optional">(اختیاری)</span></label>
-        <textarea id="pc-outcome" class="form-textarea" x-model="practiceForm.outcome" placeholder="کاربر واقعاً چه کاری انجام داد؟"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Mini Project <span class="optional">(اختیاری)</span></label>
-        <div class="filter-bar" style="margin-bottom:var(--space-s);">
-          <button type="button" class="filter-chip" :class="{active: practiceProjectMode === 'existing'}" @click="practiceProjectMode = 'existing'">پروژهٔ موجود</button>
-          <button type="button" class="filter-chip" :class="{active: practiceProjectMode === 'new'}" @click="practiceProjectMode = 'new'">پروژهٔ جدید</button>
-        </div>
-        <template x-if="practiceProjectMode === 'existing'">
-          <select class="form-select" x-model="practiceForm.project_id">
-            <option :value="null">بدون پروژه</option>
-            <template x-for="project in projects" :key="project.id">
-              <option :value="project.id" x-text="project.title"></option>
-            </template>
-          </select>
-        </template>
-        <template x-if="practiceProjectMode === 'new'">
-          <div style="display:flex; gap:var(--space-s);">
-            <input type="text" class="form-input" x-model="newProjectTitleForPractice" placeholder="عنوان پروژهٔ جدید…">
-            <button type="button" class="btn btn-secondary" @click="createProjectInlineForPractice()">بساز و انتخاب کن</button>
-          </div>
-        </template>
-        <span class="form-helper">با تبدیل این Practice به Mini Project، به یک Project واقعی از ماژول Projects وصل می‌شود.</span>
-      </div>
-
-      <div class="form-group" x-show="resources.length > 0">
-        <label class="form-label">منابع مرتبط <span class="optional">(اختیاری، چندتایی)</span></label>
-        <div class="dependency-list">
-          <template x-for="resource in resources" :key="resource.id">
-            <div class="dependency-item">
-              <input type="checkbox" :id="'pres-' + resource.id" :checked="practiceForm.resource_ids.includes(resource.id)" @change="toggleLessonResourceForPractice(resource.id)">
-              <label :for="'pres-' + resource.id" x-text="resource.title"></label>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="pc-version">نسخه</label>
-        <input id="pc-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="practiceForm.version" placeholder="v1">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-        <div class="tag-field">
-          <template x-for="tag in practiceForm.tags" :key="tag">
-            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removePracticeTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
-          </template>
-          <input type="text" x-model="practiceTagInput" placeholder="برچسب…" @keydown.enter.prevent="addPracticeTag()">
-        </div>
-      </div>
-
-      <p class="form-error" x-show="practiceFormError" x-text="practiceFormError"></p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="practiceModalMode === 'edit'" @click="practiceModalOpen = false; askDeletePractice({ id: editingPracticeId, title: practiceForm.title });">
-        <span x-html="icon('trash-2')"></span><span>حذف</span>
-      </button>
-      <button class="btn btn-secondary" @click="practiceModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="savePractice()">
-        <span x-text="practiceModalMode === 'create' ? 'ایجاد Practice' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================================
-     CHAT MODAL — Create / Edit (ماژول AI Chats)
-     منبع فیلدها: 005 (Base Entity) + 008 (platform اجباری، جریان Knowledge)
-     category/summary طبق تصمیمات این چت اضافه شدند (Gap مستندات).
-     ===================================================================== -->
-<div class="modal-overlay" x-show="chatModalOpen" x-cloak x-transition @keydown.escape.window="chatModalOpen = false">
-  <div class="modal" @click.outside="chatModalOpen = false" role="dialog" aria-modal="true">
-    <div class="modal-header">
-      <div>
-        <h2 x-text="chatModalMode === 'create' ? 'Chat جدید' : 'ویرایش Chat'"></h2>
-        <p>طبق سند 008-AI-Integration-Architecture (platform اجباری) و ساختار پایه سند 005.</p>
-      </div>
-      <button class="icon-btn" @click="chatModalOpen = false" aria-label="بستن">
-        <span x-html="icon('x')"></span>
-      </button>
-    </div>
-
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label" for="ch-title">عنوان <span class="optional">(الزامی)</span></label>
-        <input id="ch-title" class="form-input" :class="{invalid: chatFormError}" type="text" x-model="chatForm.title" placeholder="مثلاً: دیباگ خطای Alpine در فرم Task">
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label" for="ch-platform">Platform <span class="optional">(الزامی)</span></label>
-          <select id="ch-platform" class="form-select en" x-model="chatForm.platform">
-            <template x-for="opt in chatPlatformOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="ch-category">Category</label>
-          <select id="ch-category" class="form-select" x-model="chatForm.category">
-            <template x-for="opt in chatCategoryOptions" :key="opt.value">
-              <option :value="opt.value" x-text="opt.label"></option>
-            </template>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="ch-status">وضعیت</label>
-        <select id="ch-status" class="form-select" x-model="chatForm.status">
-          <template x-for="opt in projectStatusOptions" :key="opt.value">
-            <option :value="opt.value" x-text="opt.label"></option>
-          </template>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="ch-content">متن خام گفتگو <span class="optional">(اختیاری)</span></label>
-        <textarea id="ch-content" class="form-textarea prompt-textarea" x-model="chatForm.content" placeholder="کپی/چسباندن متن گفتگو…"></textarea>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="ch-summary">Summary <span class="optional">(اختیاری)</span></label>
-        <textarea id="ch-summary" class="form-textarea" x-model="chatForm.summary" placeholder="خلاصهٔ کوتاه از نتیجهٔ این گفتگو…"></textarea>
-        <span class="form-helper">این خلاصه هنگام «ذخیره در Knowledge» مستقیم به محتوای Note منتقل می‌شود.</span>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="ch-project">پروژهٔ مرتبط <span class="optional">(اختیاری)</span></label>
-        <select id="ch-project" class="form-select" x-model="chatForm.project_id">
-          <option :value="null">بدون پروژه</option>
-          <template x-for="project in projects" :key="project.id">
-            <option :value="project.id" x-text="project.title"></option>
-          </template>
-        </select>
-      </div>
-
-      <div class="form-group" x-show="prompts.length > 0">
-        <label class="form-label">Promptهای مرتبط <span class="optional">(اختیاری، چندتایی — از Prompt Hub)</span></label>
-        <div class="dependency-list">
-          <template x-for="prompt in prompts" :key="prompt.id">
-            <div class="dependency-item">
-              <input type="checkbox" :id="'chprompt-' + prompt.id" :checked="chatForm.prompt_ids.includes(prompt.id)" @change="togglePromptRefForChat(prompt.id)">
-              <label :for="'chprompt-' + prompt.id" x-text="prompt.title"></label>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label" for="ch-version">نسخه</label>
-        <input id="ch-version" class="form-input en" style="direction:ltr; text-align:left;" type="text" x-model="chatForm.version" placeholder="v1">
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">برچسب‌ها <span class="optional">(اختیاری)</span></label>
-        <div class="tag-field">
-          <template x-for="tag in chatForm.tags" :key="tag">
-            <span class="tag-chip"><span x-text="tag"></span><button type="button" @click="removeChatTag(tag)" aria-label="حذف برچسب"><span x-html="icon('x')"></span></button></span>
-          </template>
-          <input type="text" x-model="chatTagInput" placeholder="برچسب…" @keydown.enter.prevent="addChatTag()">
-        </div>
-      </div>
-
-      <div class="form-group" x-show="chatModalMode === 'edit'">
-        <label class="form-label">ذخیره در Knowledge</label>
-        <div style="display:flex; align-items:center; gap:var(--space-s); flex-wrap:wrap;">
-          <button type="button" class="btn btn-secondary" @click="saveChatToKnowledge()">
-            <span x-html="icon('library')"></span>
-            <span>ذخیره در Knowledge</span>
-          </button>
-          <span class="form-helper" x-show="notesFromChatCount(editingChatId) > 0">
-            تا الان <span class="en" x-text="notesFromChatCount(editingChatId)"></span> Note از این Chat ساخته شده.
-          </span>
-        </div>
-        <span class="form-helper">یک Note جدید از نوع Memory می‌سازد که Summary، Tags و پروژهٔ همین Chat را به ارث می‌برد و source_chat_id آن به این Chat اشاره می‌کند (طبق سند 008 و زیرنوع Memory در سند 005).</span>
-      </div>
-      <p class="form-helper" x-show="chatModalMode === 'create'">برای «ذخیره در Knowledge»، اول این Chat را ذخیره کن.</p>
-
-      <p class="form-error" x-show="chatFormError" x-text="chatFormError"></p>
-    </div>
-
-    <div class="modal-footer">
-      <button class="btn btn-secondary footer-start" x-show="chatModalMode === 'edit'" @click="chatModalOpen = false; askDeleteChat({ id: editingChatId, title: chatForm.title });">
-        <span x-html="icon('trash-2')"></span><span>حذف</span>
-      </button>
-      <button class="btn btn-secondary" @click="chatModalOpen = false">انصراف</button>
-      <button class="btn btn-primary" @click="saveChat()">
-        <span x-text="chatModalMode === 'create' ? 'ایجاد Chat' : 'ذخیره تغییرات'"></span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<!-- =====================================================================
-     PORTFOLIO DETAIL MODAL — Read-only (ماژول Portfolio)
-     منبع: 002 (نقش ماژول) · تصمیم این چت: Modal جزئیات کامل‌تر روی کارت
-     ===================================================================== -->
-<div class="modal-overlay" x-show="portfolioDetailOpen" x-cloak x-transition @keydown.escape.window="closePortfolioDetail()">
-  <template x-if="portfolioDetailProject">
-    <div class="modal modal-lg" @click.outside="closePortfolioDetail()" role="dialog" aria-modal="true">
-      <div class="modal-header">
-        <div>
-          <h2 x-text="portfolioDetailProject.title"></h2>
-          <p>تکمیل‌شده در <span class="en" x-text="portfolioCompletionDate(portfolioDetailProject)"></span> — نمای Read-only، طبق ماژول نمونه‌کار (سند 002).</p>
-        </div>
-        <button class="icon-btn" @click="closePortfolioDetail()" aria-label="بستن">
-          <span x-html="icon('x')"></span>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <div class="project-card-badges">
-          <span class="badge badge-success">
-            <span x-html="icon('check-circle-2')"></span>
-            <span>تکمیل‌شده</span>
-          </span>
-          <span class="badge" :class="priorityMeta(portfolioDetailProject.priority).badge" x-text="priorityMeta(portfolioDetailProject.priority).label"></span>
-          <span class="version-pill en" x-text="portfolioDetailProject.version"></span>
-          <template x-for="tag in portfolioDetailProject.tags" :key="tag">
-            <span class="badge badge-muted" x-text="tag"></span>
-          </template>
-        </div>
-
-        <p style="color:var(--color-text-secondary); line-height:1.8;" x-text="portfolioDetailProject.description || 'بدون توضیح'"></p>
-
-        <div class="portfolio-detail-stats">
-          <div class="portfolio-stat">
-            <span class="value en" x-text="portfolioProjectTaskStats(portfolioDetailProject.id).done + '/' + portfolioProjectTaskStats(portfolioDetailProject.id).total"></span>
-            <span class="label">Task تکمیل‌شده</span>
-          </div>
-          <div class="portfolio-stat">
-            <span class="value en" x-text="portfolioProjectHours(portfolioDetailProject.id)"></span>
-            <span class="label">ساعت کار ثبت‌شده</span>
-          </div>
-          <div class="portfolio-stat">
-            <span class="value en" x-text="notesForProject(portfolioDetailProject.id).length"></span>
-            <span class="label">Note دانش</span>
-          </div>
-          <div class="portfolio-stat">
-            <span class="value en" x-text="promptsForProject(portfolioDetailProject.id).length"></span>
-            <span class="label">Prompt مرتبط</span>
-          </div>
-          <div class="portfolio-stat">
-            <span class="value en" x-text="chatsForProject(portfolioDetailProject.id).length"></span>
-            <span class="label">Chat مرتبط</span>
-          </div>
-          <div class="portfolio-stat">
-            <span class="value en" x-text="resourcesForProject(portfolioDetailProject.id).length"></span>
-            <span class="label">منبع مرتبط</span>
-          </div>
-        </div>
-
-        <template x-if="notesForProject(portfolioDetailProject.id).length > 0">
-          <div>
-            <h3 style="font-size:var(--text-h4); margin-bottom:var(--space-s);">یادداشت‌های دانش این پروژه</h3>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <template x-for="note in notesForProject(portfolioDetailProject.id)" :key="note.id">
-                <div class="timelog-row" style="grid-template-columns:1fr auto;">
-                  <span x-text="note.title"></span>
-                  <span class="badge badge-muted" x-text="noteTypeMeta(note.type).label"></span>
-                </div>
-              </template>
-            </div>
-          </div>
-        </template>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" @click="closePortfolioDetail()">بستن</button>
-      </div>
-    </div>
-  </template>
 </div>
 
 <script>
@@ -6613,16 +5469,9 @@ function app() {
       { id: 'inbox',      label: 'صندوق ورودی',       icon: 'inbox',            disabled: false, phase: '' },
       { id: 'problems',   label: 'مسائل',              icon: 'help-circle',      disabled: false, phase: '' },
       { id: 'goals',      label: 'اهداف',              icon: 'target',           disabled: false, phase: '' },
-      { id: 'learning',   label: 'یادگیری',           icon: 'graduation-cap',   disabled: false, phase: '' },
       { id: 'projects',   label: 'پروژه‌ها',          icon: 'folder-kanban',    disabled: false, phase: '' },
       { id: 'knowledge',  label: 'دانش',               icon: 'library',          disabled: false, phase: '' },
-      { id: 'prompt-hub', label: 'پرامپت‌ها',         icon: 'sparkles',         disabled: false, phase: '' },
-      { id: 'ai-chats',   label: 'گفتگوهای AI',       icon: 'bot',              disabled: false, phase: '' },
-      { id: 'resources',  label: 'منابع',              icon: 'book-open',       disabled: false, phase: '' },
-      { id: 'resource-boxes', label: 'کتابخانهٔ منابع', icon: 'library',       disabled: false, phase: '' },
       { id: 'journal',    label: 'ژورنال',             icon: 'notebook-pen',    disabled: false, phase: '' },
-      { id: 'portfolio',  label: 'نمونه‌کار',          icon: 'briefcase',       disabled: false, phase: '' },
-      { id: 'analytics',  label: 'تحلیل‌ها',           icon: 'bar-chart-3',    disabled: false, phase: '' },
       { id: 'settings',   label: 'تنظیمات',            icon: 'settings',        disabled: false, phase: '' },
     ],
 
@@ -6632,16 +5481,14 @@ function app() {
     // ترتیب ثابت و «امروز» همیشه اول — طبق قواعد گروه‌بندی سند 002.
     navGroups: [
       { id: 'today',     label: 'امروز',  moduleIds: ['dashboard', 'companion', 'inbox', 'problems', 'journal'] },
-      { id: 'path',      label: 'مسیر',   moduleIds: ['goals', 'learning', 'projects'] },
-      { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge', 'prompt-hub', 'ai-chats', 'resources', 'resource-boxes'] },
-      { id: 'output',    label: 'خروجی',  moduleIds: ['portfolio', 'analytics'] },
+      { id: 'path',      label: 'مسیر',   moduleIds: ['goals', 'projects'] },
+      { id: 'knowledge', label: 'دانش',   moduleIds: ['knowledge'] },
     ],
 
     moduleById(id) { return this.modules.find(m => m.id === id); },
 
     kpis: [
       { id: 'projects', title: 'پروژه‌های فعال', icon: 'folder-open', desc: 'با شروع فاز Prototype نمایش داده می‌شود.' },
-      { id: 'streak',   title: 'استریک یادگیری', icon: 'flame',       desc: 'الهام‌گرفته از Duolingo — سند 007.' },
       { id: 'hours',    title: 'ساعات ثبت‌شده',   icon: 'clock',       desc: 'از TimeLog روی Taskها محاسبه می‌شود.' },
       { id: 'tasks',    title: 'تسک‌های امروز',   icon: 'list-checks', desc: 'پس از فعال شدن ماژول Projects.' },
     ],
@@ -6658,11 +5505,8 @@ function app() {
     quickAddTypes: [
       { id: 'task',     label: 'تسک',            icon: 'list-checks' },
       { id: 'project',  label: 'پروژه',           icon: 'folder-kanban' },
-      { id: 'prompt',   label: 'پرامپت',          icon: 'sparkles' },
       { id: 'idea',     label: 'ایده',            icon: 'flame' },
       { id: 'knowledge',label: 'دانش',             icon: 'library' },
-      { id: 'chat',     label: 'گفتگو',           icon: 'bot' },
-      { id: 'resource', label: 'منبع',             icon: 'book-open' },
       { id: 'journal',  label: 'ثبت ژورنال',      icon: 'notebook-pen' },
     ],
 
@@ -6812,6 +5656,7 @@ function app() {
        منبع الزامات: 002 (تب Knowledge در Project Workspace) · 005 (Note/Memory)
        ==================================================================== */
     notes: [],
+    knowledgeTab: 'notes',         // 'notes' | 'learning' — یادگیری زیرمجموعه‌ی دانش است
     noteFilterType: 'all',        // 'all' | 'note' | 'memory'
 
     noteModalOpen: false,
@@ -7249,12 +6094,7 @@ function app() {
       this.loadProblems();
       this.loadCompanionMessages();
       this.loadNotes();
-      this.loadPrompts();
-      this.loadResources();
-      this.loadResourceBoxes();
       this.loadJournalEntries();
-      this.loadRoadmaps();
-      this.loadChats();
 
       this.maybeInjectProactiveNudge();
 
@@ -7348,8 +6188,8 @@ function app() {
 
       this.supabaseSettingsForm.anonKey = '';
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadCompanionMessages(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
-      this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
+      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadCompanionMessages(); this.loadNotes();
+      this.loadJournalEntries();
       this.showToast('اتصال Supabase برقرار شد و داده‌ها بارگذاری شدند.');
     },
 
@@ -7362,8 +6202,8 @@ function app() {
 
       this.migrationReport = res.data;
       this.refreshConnectionStatus();
-      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadCompanionMessages(); this.loadNotes(); this.loadPrompts(); this.loadResources(); this.loadResourceBoxes();
-      this.loadJournalEntries(); this.loadRoadmaps(); this.loadChats();
+      this.loadProjects(); this.loadGoals(); this.loadProblems(); this.loadCompanionMessages(); this.loadNotes();
+      this.loadJournalEntries();
 
       const totalMigrated = Object.values(res.data).reduce((s, r) => s + r.migrated, 0);
       const totalFailed = Object.values(res.data).reduce((s, r) => s + r.failed, 0);
@@ -7545,28 +6385,10 @@ function app() {
         this.openCreateNote();
         return;
       }
-      if (item.id === 'prompt') {
-        this.currentView = 'prompt-hub';
-        this.loadPrompts();
-        this.openCreatePrompt();
-        return;
-      }
-      if (item.id === 'resource') {
-        this.currentView = 'resources';
-        this.loadResources();
-        this.openCreateResource();
-        return;
-      }
       if (item.id === 'journal') {
         this.currentView = 'journal';
         this.loadJournalEntries();
         this.openTodayOrCreate();
-        return;
-      }
-      if (item.id === 'chat') {
-        this.currentView = 'ai-chats';
-        this.loadChats();
-        this.openCreateChat();
         return;
       }
       this.showToast('ثبت «' + item.label + '» پس از ساخته‌شدن ماژول مربوطه فعال می‌شود.');
@@ -10131,7 +8953,7 @@ function app() {
         this.workspaceTab = 'tasks';
         return;
       }
-      // lesson یا practice → پیدا کردن Roadmap از زنجیره والدها
+      // lesson یا practice → پیدا کردن Roadmap از زنجیره والدها، داخل تب «یادگیری» در دانش
       let lesson = entity;
       if (kind === 'practice') {
         const lres = StorageLayer.getById('lessons', entity.lesson_id);
@@ -10142,7 +8964,8 @@ function app() {
       if (!mres.success || !mres.data) { this.showToast('ماژول این درس پیدا نشد.'); return; }
       const rres = StorageLayer.getById('roadmaps', mres.data.roadmap_id);
       if (!rres.success || !rres.data) { this.showToast('مسیر یادگیری پیدا نشد.'); return; }
-      this.currentView = 'learning';
+      this.currentView = 'knowledge';
+      this.knowledgeTab = 'learning';
       this.loadRoadmaps();
       this.openRoadmapDetail(rres.data);
     },
