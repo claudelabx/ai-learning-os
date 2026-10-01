@@ -1745,6 +1745,18 @@
                                   : 'background:var(--color-neutral-surface); border:1px solid var(--color-neutral-border); border-bottom-right-radius:4px;')">
                   <span x-text="msg.content"></span>
                 </div>
+
+                <!-- پیشنهاد ثبت Problem — فقط Suggest، اقدام با کلیک صریح کاربر (قانون ۱۰ سند Phase 1) -->
+                <div x-show="msg.suggestedProblemTitle" style="margin-top:6px; padding:10px 12px; border-radius:var(--radius-m); background:var(--color-neutral-surface); border:1px dashed var(--color-primary); width:fit-content; max-width:100%;">
+                  <div style="display:flex; align-items:center; gap:6px; font-size:var(--text-caption); margin-bottom:6px;">
+                    <span x-html="icon('help-circle')" style="display:inline-flex; width:14px; height:14px;"></span>
+                    <span>ثبتش کنم به‌عنوان مسئله؟ «<span x-text="msg.suggestedProblemTitle"></span>»</span>
+                  </div>
+                  <div style="display:flex; gap:6px;">
+                    <button class="btn btn-primary" style="padding:4px 10px; font-size:13px;" @click="createProblemFromSuggestion(msg)">بله، ثبتش کن</button>
+                    <button class="btn btn-secondary" style="padding:4px 10px; font-size:13px;" @click="dismissSuggestion(msg)">نه، لازم نیست</button>
+                  </div>
+                </div>
               </div>
             </div>
           </template>
@@ -3344,8 +3356,12 @@
       <p class="form-helper">این ارتباط دقیقاً همان چیزی است که سند مادر «Mina Graph» می‌نامد — به Agent کمک می‌کند بفهمد این مسئله در چه زمینه‌ای است.</p>
 
       <div class="form-group">
-        <label class="form-label" for="pf-reflection">آخرین Reflection <span class="optional">(اختیاری)</span></label>
-        <textarea id="pf-reflection" class="form-textarea" x-model="problemForm.last_reflection" placeholder="آخرین باری که به این مسئله فکر کردی، چه چیزی فهمیدی؟"></textarea>
+        <label class="form-label" for="pf-reflection">
+          آخرین Reflection
+          <span class="optional" x-show="!(problemForm.status === 'Resolved' || problemForm.status === 'Dropped')">(اختیاری)</span>
+          <span style="color:var(--color-warning);" x-show="problemForm.status === 'Resolved' || problemForm.status === 'Dropped'">(قبل از بستن این مسئله لازم است)</span>
+        </label>
+        <textarea id="pf-reflection" class="form-textarea" x-model="problemForm.last_reflection" placeholder="آخرین باری که به این مسئله فکر کردی، چه چیزی فهمیدی؟ یا: این مسئله چطور حل شد؟"></textarea>
       </div>
 
       <div class="form-row">
@@ -4423,6 +4439,12 @@
       <div class="form-group">
         <label class="form-label" for="jf-challenges">مشکلات و راه‌حل‌ها <span class="optional">(اختیاری)</span></label>
         <textarea id="jf-challenges" class="form-textarea" x-model="journalForm.challenges_solutions" placeholder="با چه مشکلی مواجه شدی و چطور حلش کردی؟"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="jf-stillopen">چی هنوز حل نشده؟ <span class="optional">(اختیاری)</span></label>
+        <textarea id="jf-stillopen" class="form-textarea" x-model="journalForm.still_open" placeholder="چیزی که امروز باز موند و باید یه‌جایی پیگیریش کنی..."></textarea>
+        <span class="form-helper" x-show="journalModalMode === 'create'">اگه چیزی اینجا بنویسی، یک Problem جدید ازش ساخته می‌شه تا گمش نکنی.</span>
       </div>
 
       <div class="form-group">
@@ -5948,7 +5970,7 @@ function app() {
     journalModalMode: 'create',    // 'create' | 'edit'
     editingJournalId: null,
     journalForm: {
-      title: '', date: '', mood: 'Good', learnings: '', challenges_solutions: '',
+      title: '', date: '', mood: 'Good', learnings: '', challenges_solutions: '', still_open: '',
       ai_discussion_notes: '', chat_ids: [], project_id: null, tags: [], time_logs: [],
     },
     journalFormError: '',
@@ -6844,6 +6866,19 @@ function app() {
       this.problemFormError = '';
       if (!title) { this.problemFormError = 'عنوان مسئله الزامی است.'; return; }
 
+      // بستن حلقه‌ی Problem Solving Loop (سند مادر بند ۱۱ — Reflect): وقتی مسئله
+      // تازه به Resolved/Dropped می‌رسد، Reflection دیگر فیلد اختیاری نیست.
+      const closingStatuses = ['Resolved', 'Dropped'];
+      const previousProblem = this.problemModalMode === 'edit'
+        ? this.problems.find(p => p.id === this.editingProblemId)
+        : null;
+      const wasAlreadyClosed = previousProblem && closingStatuses.includes(previousProblem.status);
+      const isClosingNow = closingStatuses.includes(this.problemForm.status) && !wasAlreadyClosed;
+      if (isClosingNow && !this.problemForm.last_reflection.trim()) {
+        this.problemFormError = 'قبل از بستن این مسئله، چند کلمه درباره‌ی اینکه چی شد یا چی یاد گرفتی بنویس — همون «آخرین Reflection».';
+        return;
+      }
+
       const payload = {
         title,
         description: this.problemForm.description.trim(),
@@ -6863,10 +6898,36 @@ function app() {
 
       if (!res.success) { this.problemFormError = res.error.message; return; }
 
+      // Learn (سند مادر بند ۱۱): Reflectionِ یک مسئله‌ی تازه‌بسته‌شده، دقیقاً همان
+      // چیزی است که باید وارد مدل زندگی کاربر شود — یک Memory پیشنهادی.
+      if (isClosingNow) {
+        StorageLayer.create('notes', {
+          title: 'درس از مسئله: ' + title,
+          description: this.problemForm.last_reflection.trim(),
+          type: 'memory',
+          status: 'Draft',
+          recall_priority: 'Medium',
+          source_chat_id: null,
+          memory_confidence: 'Candidate',
+          project_id: this.problemForm.project_id || null,
+          tags: [],
+          version: 'v1',
+          version_history: [{
+            version: 'v1', description: 'ساخته‌شده خودکار از بستن یک مسئله', content_snapshot: this.problemForm.last_reflection.trim(),
+            changed_at: new Date().toISOString(), change_type: 'initial',
+          }],
+        });
+        this.loadNotes();
+      }
+
       this.problemModalOpen = false;
       this.loadProblems();
       this.bumpDashRefresh();
-      this.showToast(this.problemModalMode === 'create' ? 'مسئله ثبت شد.' : 'مسئله به‌روزرسانی شد.');
+      this.showToast(
+        this.problemModalMode === 'create' ? 'مسئله ثبت شد.'
+        : isClosingNow ? 'مسئله بسته شد — یک Memory پیشنهادی از درسش ساخته شد.'
+        : 'مسئله به‌روزرسانی شد.'
+      );
     },
 
     askDeleteProblem(problem) {
@@ -6916,9 +6977,17 @@ function app() {
         this.companionError = res.error.message;
         return;
       }
-      const assistantSaveRes = StorageLayer.create('companion_messages', { title: res.data.answer.slice(0, 60), role: 'assistant', content: res.data.answer, session_id: this.companionSessionId });
+      // اگر Agent در انتهای پاسخ پیشنهاد ثبت Problem داده بود، آن تگ را جدا می‌کنیم —
+      // متن ذخیره‌شده همیشه تمیز است؛ دکمه‌ی اقدام فقط برای همین نشست زنده است (Suggest > Execute).
+      const suggestMatch = res.data.answer.match(/\[\[SUGGEST_PROBLEM:\s*(.+?)\]\]\s*$/);
+      const cleanAnswer = suggestMatch ? res.data.answer.slice(0, suggestMatch.index).trim() : res.data.answer;
+
+      const assistantSaveRes = StorageLayer.create('companion_messages', { title: cleanAnswer.slice(0, 60), role: 'assistant', content: cleanAnswer, session_id: this.companionSessionId });
       if (!assistantSaveRes.success) this.showToast('این پاسخ ذخیره نشد: ' + assistantSaveRes.error.message);
-      this.companionMessages.push({ role: 'assistant', content: res.data.answer, id: assistantSaveRes.success ? assistantSaveRes.data.id : null });
+      this.companionMessages.push({
+        role: 'assistant', content: cleanAnswer, id: assistantSaveRes.success ? assistantSaveRes.data.id : null,
+        suggestedProblemTitle: suggestMatch ? suggestMatch[1].trim() : null,
+      });
       this.$nextTick(() => {
         const box = document.getElementById('companion-scroll');
         if (box) box.scrollTop = box.scrollHeight;
@@ -6927,6 +6996,26 @@ function app() {
 
     generateSessionId() {
       return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'sess-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+    },
+
+    /** کاربر روی «بله، ثبتش کن» توی پیشنهاد Companion کلیک کرده — طبق اصل
+        Suggest > Execute (سند Phase 1 قانون ۱۰)، فقط همین‌جا و با تأیید صریح کاربر ثبت می‌شود. */
+    createProblemFromSuggestion(msg) {
+      const res = StorageLayer.create('problems', {
+        title: msg.suggestedProblemTitle,
+        description: 'از گفتگو با Companion ساخته شد.',
+        context: '', why_it_matters: '', next_step: '', last_reflection: '',
+        status: 'Captured', priority: 'Medium', project_id: null, goal_id: null,
+      });
+      if (!res.success) { this.showToast(res.error.message); return; }
+      this.loadProblems();
+      this.bumpDashRefresh();
+      msg.suggestedProblemTitle = null; // دکمه‌ها ناپدید می‌شوند، دیگر این پیشنهاد باز نیست
+      this.showToast('مسئله «' + res.data.title + '» ثبت شد.');
+    },
+
+    dismissSuggestion(msg) {
+      msg.suggestedProblemTitle = null;
     },
 
     /** «شروع گفتگوی تازه» — نشست فعلی بسته می‌شود (ولی حذف نمی‌شود؛ از طریق
@@ -8165,7 +8254,7 @@ function app() {
       const date = presetDate || this.todayDateString();
       this.journalForm = {
         title: 'ژورنال ' + this.jalaliFullLabel(date), date, mood: 'Good',
-        learnings: '', challenges_solutions: '', ai_discussion_notes: '',
+        learnings: '', challenges_solutions: '', still_open: '', ai_discussion_notes: '',
         chat_ids: [], project_id: null, tags: [], time_logs: [],
       };
       this.journalRemovedTimeLogIds = [];
@@ -8194,6 +8283,7 @@ function app() {
         mood: entry.mood || 'Good',
         learnings: entry.learnings || '',
         challenges_solutions: entry.challenges_solutions || '',
+        still_open: entry.still_open || '',
         ai_discussion_notes: entry.ai_discussion_notes || '',
         chat_ids: [...(entry.chat_ids || [])],
         project_id: entry.project_id || null,
@@ -8269,6 +8359,7 @@ function app() {
         mood: this.journalForm.mood,
         learnings: this.journalForm.learnings.trim(),
         challenges_solutions: this.journalForm.challenges_solutions.trim(),
+        still_open: this.journalForm.still_open.trim(),
         ai_discussion_notes: this.journalForm.ai_discussion_notes.trim(),
         chat_ids: this.journalForm.chat_ids, // ماژول AI Chats هنوز ساخته نشده — فقط ساختار داده
         time_log_ids: finalTimeLogIds,
@@ -8282,9 +8373,25 @@ function app() {
 
       if (!res.success) { this.journalFormError = res.error.message; return; }
 
+      // سند مادر بند ۲۵ (شب): «و این Reflection می‌تواند به Graph برگردد» —
+      // اگر چیزی هنوز حل‌نشده مونده، فقط توی متن ژورنال دفن نمی‌شه، یک Problem واقعی می‌شه.
+      // فقط موقع ساخت (نه هر ویرایش) تا تکراری نشه.
+      let createdProblemToast = '';
+      if (this.journalModalMode === 'create' && this.journalForm.still_open.trim()) {
+        const pRes = StorageLayer.create('problems', {
+          title: this.journalForm.still_open.trim().slice(0, 80),
+          description: this.journalForm.still_open.trim(),
+          context: 'از جمع‌بندی شب ' + this.jalaliFullLabel(this.journalForm.date) + ' آمده.',
+          why_it_matters: '', next_step: '', last_reflection: '',
+          status: 'Captured', priority: 'Medium',
+          project_id: this.journalForm.project_id || null, goal_id: null,
+        });
+        if (pRes.success) { this.loadProblems(); createdProblemToast = ' — یک Problem جدید هم از «چیزی که حل نشد» ساخته شد.'; }
+      }
+
       this.journalModalOpen = false;
       this.loadJournalEntries();
-      this.showToast(this.journalModalMode === 'create' ? 'ثبت ژورنال ایجاد شد.' : 'ثبت ژورنال به‌روزرسانی شد.');
+      this.showToast((this.journalModalMode === 'create' ? 'ثبت ژورنال ایجاد شد.' : 'ثبت ژورنال به‌روزرسانی شد.') + createdProblemToast);
       this.bumpDashRefresh();
     },
 
