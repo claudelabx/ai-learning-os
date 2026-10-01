@@ -26,7 +26,7 @@ const GATEWAY_SECRET = process.env.GATEWAY_SECRET || ''; // محافظت ساد�
 // ---- Companion Chat — گفتگوی آزاد و Context-aware (سند مادر بخش پنجم و ششم؛
 // سند Phase 1 بخش VIII و بخش XIV بند ۳۷ — Agent Context Pipeline) ----
 function buildCompanionAskPrompt(history, ctx) {
-  const { openProblems, confirmedMemories, goals, activeProjects } = ctx || {};
+  const { openProblems, confirmedMemories, goals, activeProjects, recentJournal } = ctx || {};
 
   const systemLines = [
     'تو «Companion» هستی — همراه شخصی و هوشمند کاربر داخل اپلیکیشن «Personal Companion».',
@@ -39,6 +39,13 @@ function buildCompanionAskPrompt(history, ctx) {
     '- تصمیم نهایی همیشه با خود کاربر است؛ تو کمک می‌کنی بهتر ببیند و بهتر تصمیم بگیرد، نه اینکه به‌جایش تصمیم بگیری.',
     '- اگر بین چیزی که کاربر گفته و یک هدف/تجربه/محدودیت قبلی‌اش تناقض دیدی، مؤدبانه و بدون تحمیل مطرحش کن (اصل Challenge without Control).',
     '- کوتاه و مکالمه‌ای بنویس (معمولاً ۲ تا ۶ جمله)، نه یک مقاله. پاسخ را به فارسی بده.',
+    '',
+    'توانایی ویژه — پیشنهاد ثبت Problem:',
+    'اگر از صحبت کاربر فهمیدی که او با یک مسئله‌ی واقعی و حل‌نشده مواجه است (نه فقط یک حرف گذرا) ' +
+      'و این مسئله هنوز توی «مسائل باز» بالا ثبت نشده، می‌توانی در انتهای پاسخت، دقیقاً در یک خط جدا و تنها همان خط، ' +
+      'این را بنویسی: [[SUGGEST_PROBLEM: یک عنوان کوتاه و دقیق برای این مسئله]] ' +
+      'این کار را فقط وقتی انجام بده که واقعاً مطمئنی — نه برای هر جمله‌ای. تو فقط پیشنهاد می‌دهی؛ ' +
+      'تصمیم نهایی و خودِ ثبت‌کردن با کلیک کاربر انجام می‌شود، نه خودکار (اصل Suggest > Execute).',
   ];
 
   const ctxLines = [];
@@ -62,6 +69,16 @@ function buildCompanionAskPrompt(history, ctx) {
       ctxLines.push(`- ${m.title}${m.description ? ': ' + m.description : ''}`);
     });
   }
+  if (Array.isArray(recentJournal) && recentJournal.length) {
+    ctxLines.push('\n## چند ثبت اخیر ژورنال کاربر (حال و احوال و تجربه‌های واقعی روزهای اخیر)');
+    recentJournal.forEach((j) => {
+      const parts = [];
+      if (j.mood) parts.push(`حال‌وهوا: ${j.mood}`);
+      if (j.learnings) parts.push(`یاد گرفته: ${j.learnings}`);
+      if (j.challenges_solutions) parts.push(`چالش/راه‌حل: ${j.challenges_solutions}`);
+      ctxLines.push(`- [${j.date || '-'}] ${parts.join(' | ')}`);
+    });
+  }
   if (!ctxLines.length) {
     ctxLines.push('(هنوز هیچ Context ذخیره‌شده‌ای — مسئله، هدف یا Memory — برای این کاربر ثبت نشده.)');
   }
@@ -72,12 +89,12 @@ function buildCompanionAskPrompt(history, ctx) {
 }
 
 function buildPrompt(context) {
-  const { project, task, recentNotes, goal, openProblems, confirmedMemories } = context || {};
+  const { project, task, recentNotes, goal, openProblems, confirmedMemories, recentJournal } = context || {};
 
   const systemPrompt =
     'تو «Companion» هستی، دستیار شخصی و context-aware داخل اپلیکیشن «Personal Companion». ' +
     'نقش تو کمک به فهم بهتر وضعیت و پیشنهاد یک گام بعدی مشخص است، نه فقط اجرای دستور. ' +
-    'بر اساس تمام زمینه‌ای که در ادامه می‌بینی (پروژه، هدف مرتبط، تسک جاری، مسائل باز، حافظه‌های تأییدشده، یادداشت‌های اخیر) ' +
+    'بر اساس تمام زمینه‌ای که در ادامه می‌بینی (پروژه، هدف مرتبط، تسک جاری، مسائل باز، حافظه‌های تأییدشده، یادداشت‌های اخیر، ثبت‌های اخیر ژورنال) ' +
     'یک «گام بعدی» مشخص، عملی و کوتاه (حداکثر ۴-۵ جمله) پیشنهاد بده. ' +
     'اگر یکی از مسائل باز یا حافظه‌های داده‌شده واقعاً به این گام مرتبط است، صریحاً به آن اشاره کن — این نشان می‌دهد Context را واقعاً خوانده‌ای. ' +
     'اگر زمینه‌ی کافی برای یک پیشنهاد مطمئن نداری، به‌جای حدس‌زدن صادقانه بگو که اطلاعات کافی نیست و چه چیزی کم است (اصل «No fake intelligence»). ' +
@@ -118,6 +135,16 @@ function buildPrompt(context) {
     lines.push(`\n## یادداشت‌های مرتبط اخیر`);
     recentNotes.slice(0, 5).forEach((n) => {
       lines.push(`- ${n.title}${n.description ? ': ' + n.description : ''}`);
+    });
+  }
+  if (Array.isArray(recentJournal) && recentJournal.length) {
+    lines.push(`\n## ثبت‌های اخیر ژورنال — حال‌وهوا و تجربه‌ی واقعی روزهای اخیر`);
+    recentJournal.forEach((j) => {
+      const parts = [];
+      if (j.mood) parts.push(`حال‌وهوا: ${j.mood}`);
+      if (j.learnings) parts.push(`یاد گرفته: ${j.learnings}`);
+      if (j.challenges_solutions) parts.push(`چالش/راه‌حل: ${j.challenges_solutions}`);
+      lines.push(`- [${j.date || '-'}] ${parts.join(' | ')}`);
     });
   }
   lines.push(`\n## درخواست`);
